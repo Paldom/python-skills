@@ -1,0 +1,8 @@
+# Executable/enforcement surface: changes here run code on contributors' machines
+# (hooks fire in any Claude Code session; make check runs scripts/). Owner review
+# is mandatory.
+/.claude/           @Paldom
+/scripts/           @Paldom
+/Makefile           @Paldom
+/.github/           @Paldom
+/.claude-plugin/    @Paldom

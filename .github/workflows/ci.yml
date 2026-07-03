@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      # For maximum supply-chain safety, pin actions to full commit SHAs
+      # (dependabot.yml keeps both actions and pip pins fresh).
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate skills, evals, and plugin manifests
+        run: python3 scripts/validate_skills.py
+      - name: Validate GitHub workflow files
+        run: |
+          pip install --quiet -r requirements-dev.txt
+          check-jsonschema --builtin-schema vendor.github-workflows .github/workflows/*.yml

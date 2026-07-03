@@ -1,0 +1,3 @@
+# CI/dev tooling only — the validator itself is stdlib-only.
+# Dependabot (pip ecosystem) keeps this pinned version fresh.
+check-jsonschema==0.36.2

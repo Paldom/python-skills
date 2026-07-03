@@ -216,3 +216,23 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Agent Skills scaffold ---
+# Local-only workspace: research sources, prompts, drafts for skill building.
+# Deliberately never committed — except its README, which explains the convention.
+.local/*
+!.local/README.md
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Python
+*.py[cod]
+.venv/
+
+# Claude Code per-machine settings
+.claude/settings.local.json
