@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/Paldom/python-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Paldom/python-skills/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![skills.sh](https://skills.sh/b/Paldom/python-skills)](https://skills.sh/Paldom/python-skills)
 
 Agent Skills and hooks for maintaining high-quality open-source Python packages - an agentic engineering setup covering linting, testing, packaging, releases, and CI quality gates.
 

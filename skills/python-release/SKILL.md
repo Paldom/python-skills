@@ -1,6 +1,7 @@
 ---
 name: python-release
 description: Cuts and automates releases of a Python package — version bumps, changelogs, git tags, PyPI trusted publishing (OIDC), and the tag-triggered publish workflow with a gated environment. Use for 'cut a release', 'publish to PyPI', 'bump the version', 'automate releases', 'set up trusted publishing'. Not for packaging metadata, build backends, or non-release CI.
+license: MIT
 ---
 
 # python-release

@@ -38,19 +38,34 @@ walks the same steps.
 ## Deploy
 
 ```bash
+# 0. Spec validation (GitHub CLI >= 2.90, public preview) - fix every warning
+gh skill publish --dry-run
+
 # 1. Make the repository public (this is the deployment event)
 gh repo edit Paldom/python-skills --visibility public --accept-visibility-change-consequences
 
 # 2. Turn on the public-repo protections
-#    (PVR + a ruleset - see the SECURITY.md note and repo-protections guidance)
+#    (PVR + branch ruleset + a v* tag ruleset for immutable releases -
+#     see the SECURITY.md note and repo-protections guidance)
 gh api repos/Paldom/python-skills/private-vulnerability-reporting --method PUT
 
-# 3. Verify installability exactly like a consumer
+# 3. Cut a versioned release (matches .claude-plugin/plugin.json) + topics
+gh skill publish --tag v0.1.0
+gh repo edit Paldom/python-skills --add-topic skills-sh
+
+# 4. Verify installability exactly like a consumer
 npx skills add Paldom/python-skills --list
 mkdir -p /tmp/skills-verify && cd /tmp/skills-verify
 npx skills add Paldom/python-skills --skill '*' -a claude-code -y
 npx skills list -a claude-code
 ```
+
+`gh skill publish` warnings worth knowing: add `license: MIT` to every skill's
+frontmatter (recommended field, scaffolded by default here); the
+`.claude/skills/` warning is expected — those are this repo's own bundled dev
+skills, committed by design. The README ships with the install-count badge
+(`https://skills.sh/b/Paldom/python-skills`) linking to the repo's
+skills.sh page.
 
 The verification install above is also what seeds the first telemetry event —
 run it outside CI (telemetry is auto-disabled in CI) so the repo gets listed.

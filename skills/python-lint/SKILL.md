@@ -1,6 +1,7 @@
 ---
 name: python-lint
 description: Sets up and tunes Ruff linting and formatting for a Python package — pyproject [tool.ruff] rule selection, Black/Flake8/isort migration — and fixes lint or format failures. Use when the user says 'set up linting', 'add ruff', 'fix lint errors', 'configure the formatter'. Not for type errors, non-Python file formatting, pre-commit wiring, or CI workflows.
+license: MIT
 ---
 
 # python-lint

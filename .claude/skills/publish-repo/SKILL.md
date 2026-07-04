@@ -26,10 +26,14 @@ Slash-invoked only: it flips repository visibility, which is hard to undo social
    ```bash
    make check                      # must end: 0 error(s)
    npx skills add . --list        # every skill under skills/ discovered
+   gh skill publish --dry-run     # spec validation (gh >= 2.90; public preview)
    python3 -c "import json; json.load(open('skills.sh.json'))"
    ```
-   Also verify: README catalogue + CHANGELOG current; every skill description is
-   benefit-led (it is the listing copy); CI green on the latest commit.
+   Triage every `gh skill` warning: add missing `license: MIT` frontmatter; the
+   `.claude/skills/` warning is expected here (bundled first-party dev skills,
+   committed by design — not third-party content). Also verify: README catalogue
+   + CHANGELOG current; every skill description is benefit-led (it is the listing
+   copy); CI green on the latest commit.
 2. **Manual blockers — require explicit user confirmation, never assume:**
    - full-history secret scan (gitleaks/trufflehog) done;
    - personal/private-file review done (everything ever committed goes public).
@@ -47,8 +51,16 @@ Slash-invoked only: it flips repository visibility, which is hard to undo social
    Add a default-branch ruleset. Solo-maintainer default: block force pushes and
    deletions only (a require-PR rule would block the owner's direct-push
    workflow); when outside contributors arrive, upgrade to require-PR +
-   code-owner review + the `validate` check.
-6. **Verify like a consumer, and seed the catalogue** (run locally, NOT in CI —
+   code-owner review + the `validate` check. Also add a **tag ruleset** on `v*`
+   (block update + deletion) so published releases are immutable.
+6. **Release** — cut a versioned GitHub release matching `.claude-plugin/plugin.json`:
+   ```bash
+   gh skill publish --tag v<version>
+   ```
+   It re-validates, adds the `agent-skills` topic if missing, and creates the
+   release with auto-generated notes. Add the `skills-sh` topic too:
+   `gh repo edit <owner>/<repo> --add-topic skills-sh`.
+7. **Verify like a consumer, and seed the catalogue** (run locally, NOT in CI —
    telemetry is disabled in CI and the first real install is what lists the repo):
    ```bash
    npx skills add <owner>/<repo> --list
@@ -56,11 +68,15 @@ Slash-invoked only: it flips repository visibility, which is hard to undo social
    npx skills add <owner>/<repo> --skill '*' -a claude-code -y
    npx skills list -a claude-code
    ```
-7. **Polish:** set the homepage (`gh repo edit --homepage`) to docs or the
-   skills.sh repo page; remind about the social preview image (manual UI step).
-8. **Report:** repo URL, install command, protections applied, what was skipped
-   (with unlock conditions), and the note that the skills.sh page appears after
-   telemetry processes the seed install (pages are cached).
+8. **Polish:** the README carries the skills.sh badge
+   (`[![skills.sh](https://skills.sh/b/<owner>/<repo>)](https://skills.sh/<owner>/<repo>)`
+   — scaffolded by default); set the homepage (`gh repo edit --homepage`, e.g. to
+   `https://skills.sh/<owner>/<repo>`); remind about the social preview image
+   (manual UI step).
+9. **Report:** repo URL, skills.sh page URL, install command, release tag,
+   protections applied, what was skipped (with unlock conditions), and the note
+   that the skills.sh page appears after telemetry processes the seed install
+   (pages are cached).
 
 ## Output spec
 

@@ -1,6 +1,7 @@
 ---
 name: python-typing
 description: Sets up static type checking for a Python package — choosing mypy, pyright, or ty, strict configuration, per-module overrides, shipping py.typed — and fixes type-check errors. Use when the user says 'add type checking', 'set up mypy', 'pyright errors', 'make this package typed'. Not for lint or format failures, failing tests, runtime bugs, or the CI workflow that runs the checker.
+license: MIT
 ---
 
 # Python Typing

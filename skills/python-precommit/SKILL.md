@@ -1,6 +1,7 @@
 ---
 name: python-precommit
 description: Configures pre-commit for a Python repo — a .pre-commit-config.yaml with ruff, mypy, hygiene, commit-message and pre-push hooks, plus non-Python file formatting and validation (YAML, JSON, TOML, Markdown), kept in sync with CI. Use for 'set up pre-commit', 'add git hooks', 'format the YAML and Markdown', 'enforce conventional commits'. Not for Claude Code agent hooks or CI workflows.
+license: MIT
 ---
 
 # python-precommit

@@ -1,6 +1,7 @@
 ---
 name: python-packaging
 description: Configures packaging for a Python library — pyproject.toml metadata, build backend choice, src layout, uv project management, building wheels and sdists, verifying py.typed lands in the wheel. Use for 'package this project', 'set up pyproject.toml', 'build a wheel', 'switch to uv', 'migrate off Poetry'. Not for publishing to PyPI, version bumps, release automation, or typing strategy.
+license: MIT
 ---
 
 # python-packaging

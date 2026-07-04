@@ -1,6 +1,7 @@
 ---
 name: python-supply-chain
 description: Hardens a Python repository's supply chain — Dependabot update automation, pip-audit vulnerability scanning, secret scanning and push protection, CodeQL, OpenSSF Scorecard, SBOMs, CODEOWNERS. Use for 'set up dependabot', 'audit dependencies', 'enable secret scanning', 'harden this repo'. Not for CI quality gates, workflow hardening, or PyPI publishing.
+license: MIT
 ---
 
 # python-supply-chain

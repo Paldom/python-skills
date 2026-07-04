@@ -1,6 +1,7 @@
 ---
 name: agent-guardrails
 description: Installs agentic guardrails into a Python repo — Claude Code hooks with the exit-code contract, settings wiring, AGENTS.md/CLAUDE.md rules files, vetted public skills — and troubleshoots hooks that don't fire or block. Use for 'add Claude Code hooks', 'write an AGENTS.md', 'make this repo agent-ready', 'agent keeps bypassing checks'. Not for git pre-commit hooks or validating LLM output.
+license: MIT
 ---
 
 # agent-guardrails
