@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning: [SemVer](https://semver.org) on the plugin manifest
 (breaking skill-interface change → major, new skill → minor, fix → patch).
 
+## [Unreleased]
+
+### Added
+- `docs/setup-prompt.md` — a paste-ready one-run `/goal` prompt that
+  orchestrates all nine skills against a target project (write-surface-derived
+  ordering, parallel subagents where provably safe, verifier-bracketed, ends in
+  a single PR-branch commit), linked from the README quick start.
+
 ## [0.2.0] - 2026-07-04
 
 ### Added

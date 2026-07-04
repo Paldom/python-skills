@@ -29,6 +29,10 @@ cp -r python-skills/skills/<skill-name> your-project/.claude/skills/
 Then just describe the task in Claude Code — the skill activates on its description —
 or invoke it explicitly with `/<skill-name>`.
 
+To apply **all** skills to a project in one orchestrated run (baseline audit →
+parallel subagents → verified PR), paste the ready-made prompt from
+[docs/setup-prompt.md](docs/setup-prompt.md).
+
 ## Skills
 
 | Skill | Description |
