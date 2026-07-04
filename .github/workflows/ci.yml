@@ -15,7 +15,7 @@ jobs:
       # For maximum supply-chain safety, pin actions to full commit SHAs
       # (dependabot.yml keeps both actions and pip pins fresh).
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Validate skills, evals, and plugin manifests
@@ -32,9 +32,9 @@ jobs:
       DISABLE_TELEMETRY: "1"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
       - name: Verify skills.sh discoverability and installability
         run: |
           if ! ls skills/*/SKILL.md >/dev/null 2>&1; then
