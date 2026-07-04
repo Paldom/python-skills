@@ -15,7 +15,7 @@ jobs:
       # For maximum supply-chain safety, pin actions to full commit SHAs
       # (dependabot.yml keeps both actions and pip pins fresh).
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Validate skills, evals, and plugin manifests
