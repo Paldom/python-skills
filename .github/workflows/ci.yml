@@ -24,3 +24,26 @@ jobs:
         run: |
           pip install --quiet -r requirements-dev.txt
           check-jsonschema --builtin-schema vendor.github-workflows .github/workflows/*.yml
+
+  # Mirrors what skills.sh consumers run: discoverability + a real install.
+  skills-sh:
+    runs-on: ubuntu-latest
+    env:
+      DISABLE_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify skills.sh discoverability and installability
+        run: |
+          if ! ls skills/*/SKILL.md >/dev/null 2>&1; then
+            echo "no distributed skills yet - skipping skills.sh checks"
+            exit 0
+          fi
+          python3 -c "import json; json.load(open('skills.sh.json'))"
+          # Validation-only tool; pinned for reproducibility (bump deliberately).
+          npx -y skills@1.5.14 add . --list
+          mkdir -p /tmp/skills-smoke && cd /tmp/skills-smoke
+          npx -y skills@1.5.14 add "$GITHUB_WORKSPACE" --skill '*' -a claude-code -y
+          npx -y skills@1.5.14 list -a claude-code

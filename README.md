@@ -12,7 +12,14 @@ scripts/references — validated on every write, commit, and PR.
 
 ## Quick start
 
-Install everything as a plugin (recommended; needs read access while the repo is private):
+Install with the [skills CLI](https://skills.sh) — works with Claude Code, Cursor,
+Codex, and any Agent Skills-compatible tool:
+
+```bash
+npx skills add Paldom/python-skills
+```
+
+Or as a Claude Code plugin:
 
 ```
 /plugin marketplace add Paldom/python-skills
@@ -55,9 +62,10 @@ rulesets (the authoritative, un-bypassable layer).
 
 ```
 skills/                  # distributed skills, one folder per skill (SKILL.md + evals/ + scripts/)
-docs/                    # skill-authoring guide, eval methodology
+docs/                    # skill-authoring guide, eval methodology, deployment guide
+skills.sh.json           # skills.sh repo-page customization (groupings)
 scripts/                 # deterministic validator used by hooks and CI
-.claude/                 # agentic dev setup: hooks + the bundled add-skill skill
+.claude/                 # agentic dev setup: hooks + bundled add-skill / publish-repo skills
 .claude-plugin/          # plugin + marketplace manifests (makes this repo installable)
 .local/                  # gitignored working area: sources, research, PROMPT.md (see below)
 ```

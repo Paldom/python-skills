@@ -1,0 +1,39 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "Code quality",
+      "description": "Ruff linting, strict typing, and pre-commit hooks that catch problems before they ever reach CI.",
+      "skills": [
+        "python-lint",
+        "python-typing",
+        "python-precommit"
+      ]
+    },
+    {
+      "title": "Test and gate",
+      "description": "pytest infrastructure with coverage gates and GitHub Actions matrices that make a green check mean something.",
+      "skills": [
+        "python-testing",
+        "python-ci"
+      ]
+    },
+    {
+      "title": "Package and ship",
+      "description": "Modern pyproject packaging, uv workflows, and OIDC trusted publishing - from src layout to PyPI without stored tokens.",
+      "skills": [
+        "python-packaging",
+        "python-release"
+      ]
+    },
+    {
+      "title": "Harden",
+      "description": "Supply-chain defenses and agentic guardrails that keep dependencies and AI sessions inside the rails.",
+      "skills": [
+        "python-supply-chain",
+        "agent-guardrails"
+      ]
+    }
+  ]
+}
