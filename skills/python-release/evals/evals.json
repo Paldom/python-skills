@@ -1,0 +1,76 @@
+{
+  "skill": "python-release",
+  "cases": [
+    { "type": "should_trigger", "prompt": "set up trusted publishing so I don't need a PYPI_TOKEN secret in github actions" },
+    { "type": "should_trigger", "prompt": "cut a release" },
+    { "type": "should_trigger", "prompt": "bump the version to 0.4.0 and tag it" },
+    { "type": "should_trigger", "prompt": "how do i publsh this package to pypi automatically when i push a tag" },
+    { "type": "should_trigger", "prompt": "pypi publish fails with invalid-publisher even though I configured a trusted publisher for this repo" },
+    { "type": "should_trigger", "prompt": "python-semantic-release bumps pyproject.toml but then uv build fails in CI because uv.lock is stale" },
+    { "type": "should_trigger", "prompt": "should my package version come from git tags or live in pyproject.toml?" },
+    { "type": "should_trigger", "prompt": "automate version bumps and changelog generation from conventional commits" },
+    { "type": "should_trigger", "prompt": "add a publish workflow that uploads to PyPI on v* tags, with a manual approval before upload" },
+    { "type": "should_trigger", "prompt": "We need a proper release process for this library — versioning, changelog, tagging, the works." },
+    { "type": "should_not_trigger", "prompt": "set up pyproject.toml metadata and pick a build backend for this library" },
+    { "type": "should_not_trigger", "prompt": "the wheel build fails with a hatchling metadata error" },
+    { "type": "should_not_trigger", "prompt": "switch this project to uv with a src layout" },
+    { "type": "should_not_trigger", "prompt": "add a github actions workflow that runs lint and tests on every PR" },
+    { "type": "should_not_trigger", "prompt": "pin the actions in our test workflow to commit SHAs and make the checks required" },
+    { "type": "should_not_trigger", "prompt": "enforce conventional commit messages with a git hook" },
+    { "type": "should_not_trigger", "prompt": "set up dependabot and pip-audit for this repo" },
+    { "type": "should_not_trigger", "prompt": "attach an SBOM to our github releases" },
+    { "type": "should_not_trigger", "prompt": "what do the caret and tilde version range operators mean in dependency specifiers?" },
+    { "type": "should_not_trigger", "prompt": "draft a blog post announcing version 2.0 of the library" },
+    {
+      "type": "quality",
+      "prompt": "Set up automated PyPI releases for my uv-managed package with trusted publishing",
+      "expected_behavior": [
+        "asks about or determines the versioning strategy (static pyproject version vs git-tag-derived) and states the trade-off instead of silently picking one",
+        "walks through registering the trusted publisher on PyPI with the exact owner, repo, workflow filename, and environment fields",
+        "writes a tag-triggered publish workflow with id-token write and contents read permissions, a gated environment, and actions pinned to full commit SHAs",
+        "includes a uv lock refresh (uv lock --upgrade-package) committed together with the version bump so uv.lock never desyncs",
+        "keeps a human gate before upload (environment approval or PR merge) rather than publishing on every push to main"
+      ]
+    },
+    {
+      "type": "quality",
+      "prompt": "PyPI publish fails with invalid-publisher / unable to authenticate even though I configured a trusted publisher",
+      "expected_behavior": [
+        "checks the trusted publisher fields on PyPI character-by-character against the repo (owner and repo casing, workflow filename including the .yml extension, environment name)",
+        "checks whether the publish step runs via workflow_call or a reusable workflow, which breaks the exact-match validation",
+        "checks that the job runs on a GitHub-hosted runner, since self-hosted runners are not supported for trusted publishing",
+        "does not suggest falling back to a long-lived API token as the fix"
+      ]
+    },
+    {
+      "type": "quality",
+      "prompt": "python-semantic-release bumped the version but the next uv build step fails in CI",
+      "expected_behavior": [
+        "diagnoses the failure as uv.lock desync — the bump rewrote pyproject.toml but uv.lock still records the old version",
+        "adds uv lock --upgrade-package <package> between the bump and the build (for PSR, in build_command)",
+        "ensures the refreshed uv.lock is committed with the version-bump commit, not just regenerated in the runner",
+        "verifies checkout uses fetch-depth 0 so PSR can compute the bump from full history"
+      ]
+    },
+    {
+      "type": "quality",
+      "prompt": "I want releases automated but a human must approve before anything reaches PyPI",
+      "expected_behavior": [
+        "offers a PR-gated flow (release-please) or a gated GitHub environment with required reviewers as the approval mechanism",
+        "warns that tags and PRs created with the default GITHUB_TOKEN do not trigger downstream workflows, and shows the PAT or GitHub App workaround",
+        "notes environment required-reviewer protection is not available on private repos on lower GitHub plans",
+        "keeps the publish job permissions minimal (id-token write, contents read)"
+      ]
+    },
+    {
+      "type": "quality",
+      "prompt": "generate a changelog for releases — should I just scrape it from commit messages?",
+      "expected_behavior": [
+        "presents both commit-scraped changelogs (python-semantic-release, git-cliff) and human-written styles (Keep a Changelog, changesets-style notes), including the practitioner criticism that raw commit dumps are unhelpful to end users",
+        "recommends a concrete default (an Unreleased section rolled into each release, or curated notes reviewed on the release PR) instead of leaving the choice open",
+        "if commit scraping is chosen, ties it to conventional-commit discipline and notes that non-conforming commits cause wrong or missing bumps",
+        "keeps the version string free of extra text such as dates so downstream semver parsers do not break"
+      ]
+    }
+  ]
+}

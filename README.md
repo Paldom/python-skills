@@ -33,7 +33,19 @@ or invoke it explicitly with `/<skill-name>`.
 
 | Skill | Description |
 | --- | --- |
-| _none yet_ | Skills are added via the workflow in [CONTRIBUTING.md](CONTRIBUTING.md). |
+| [python-lint](skills/python-lint/) | Sets up and tunes Ruff linting and formatting — `[tool.ruff]` rule selection, Black/Flake8/isort migration — and fixes lint or format failures. |
+| [python-typing](skills/python-typing/) | Sets up static type checking — choosing mypy, pyright, or ty, strict configuration, per-module overrides, shipping `py.typed` — and fixes type-check errors. |
+| [python-testing](skills/python-testing/) | Builds pytest infrastructure — layout and config, branch-coverage gates, Hypothesis property-based tests, mutation testing, multi-version runs via tox/nox/uv. |
+| [python-packaging](skills/python-packaging/) | Configures packaging — pyproject.toml metadata, build backend choice, src layout, uv project management, building and verifying wheels and sdists. |
+| [python-release](skills/python-release/) | Cuts and automates releases — version bumps, changelogs, git tags, PyPI trusted publishing (OIDC), and the tag-triggered publish workflow with a gated environment. |
+| [python-ci](skills/python-ci/) | Authors GitHub Actions quality gates — lint/type/test matrices, uv caching, an all-checks-passed aggregator, required checks, rulesets, action SHA pinning. |
+| [python-precommit](skills/python-precommit/) | Configures pre-commit — ruff, mypy, hygiene, commit-message and pre-push hooks, plus non-Python file formatting and validation, kept in sync with CI. |
+| [python-supply-chain](skills/python-supply-chain/) | Hardens the supply chain — Dependabot with cooldown, pip-audit, secret scanning and push protection, CodeQL, Scorecard, SBOMs, CODEOWNERS. |
+| [agent-guardrails](skills/agent-guardrails/) | Installs agentic guardrails — Claude Code hooks with the exit-code contract, settings wiring, AGENTS.md rules files, vetted public skills — and troubleshoots hooks. |
+
+Together they implement a layered enforcement architecture for agent-era Python
+maintenance: agent hooks (instant feedback) → pre-commit (commit gate) → CI +
+rulesets (the authoritative, un-bypassable layer).
 
 ## Repository structure
 
