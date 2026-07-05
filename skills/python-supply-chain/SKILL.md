@@ -43,8 +43,8 @@ admin rights on the repo — otherwise print the commands for the user to run.
 Run the bundled read-only checker from the repo root before adding anything:
 
 ```bash
-python3 scripts/check_supply_chain.py --root .           # file-level checks
-python3 scripts/check_supply_chain.py --root . --github  # + GitHub-side settings via gh
+python3 "${CLAUDE_SKILL_DIR}/scripts/check_supply_chain.py" --root .           # file-level checks
+python3 "${CLAUDE_SKILL_DIR}/scripts/check_supply_chain.py" --root . --github  # + GitHub-side settings via gh
 ```
 
 (Invoke it from this skill's folder with an absolute path if cwd differs.) It prints

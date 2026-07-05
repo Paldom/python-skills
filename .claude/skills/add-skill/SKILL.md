@@ -30,7 +30,7 @@ treat `$ARGUMENTS` as the skill name or idea to scope in step 1.
    load-bearing against primary sources, and cross-validate contested or
    high-stakes facts (external APIs, schemas, security claims) with /cross when
    available. Verified facts a skill depends on go into `skills/<name>/references/`
-   as cleaned, committed files — never cite `.local/` paths from a skill.
+   as cleaned, tracked files — never cite `.local/` paths from a skill.
 3. **Evals first.** Create `skills/<name>/evals/evals.json` per `docs/evals.md`:
    ≥8 `should_trigger` (vary formality, typos, terseness), ≥8 `should_not_trigger`
    (near-misses sharing keywords), 3–5 `quality` cases with plain-language
@@ -51,7 +51,8 @@ treat `$ARGUMENTS` as the skill name or idea to scope in step 1.
 7. **Register.** Add/update the skill's row in the README catalog table, add a
    `CHANGELOG.md` entry, and put the skill in exactly one `skills.sh.json`
    grouping (engaging one-sentence group descriptions — that file is the repo's
-   skills.sh listing copy). Re-check descriptions of sibling skills for new overlap.
+   skills.sh listing copy). Re-check descriptions of sibling skills for new
+   overlap. Do **not** commit or push — leave all changes for the owner to review.
 
 ## Output spec (Definition of Done)
 
@@ -67,5 +68,5 @@ treat `$ARGUMENTS` as the skill name or idea to scope in step 1.
   generalize the missing verb/noun instead.
 - Over-triggering fix = add targeted "Not for …" noun phrases from the actual
   false-positive overlap; don't delete positive triggers.
-- Model upgrades shift routing — note in the PR that evals should be re-run after
-  the next model release.
+- Model upgrades shift routing — note in your summary that evals should be re-run
+  after the next model release.

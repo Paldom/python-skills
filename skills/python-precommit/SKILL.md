@@ -243,7 +243,7 @@ maintenance-only status of `pre-commit/action` are in
 ### 8. Verify
 
 ```bash
-python3 scripts/check_precommit_config.py .pre-commit-config.yaml  # footgun lint, read-only
+python3 "${CLAUDE_SKILL_DIR}/scripts/check_precommit_config.py" .pre-commit-config.yaml  # footgun lint, read-only
 uv run pre-commit run --all-files        # exits 0 on a clean tree
 git commit --allow-empty -m "bad msg"    # commit-msg hook must reject (if step 4 used)
 ```
@@ -344,5 +344,5 @@ that were configured but never installed. It never modifies anything.
   budgets.
 - [scripts/check_precommit_config.py](scripts/check_precommit_config.py) —
   read-only footgun linter for an existing `.pre-commit-config.yaml`
-  (`python3 scripts/check_precommit_config.py [path] [--strict]`; non-zero
+  (`python3 "${CLAUDE_SKILL_DIR}/scripts/check_precommit_config.py" [path] [--strict]`; non-zero
   exit on findings).

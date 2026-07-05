@@ -3,7 +3,7 @@
 A paste-ready `/goal` prompt that applies **every skill in this repository** to a
 target Python project in a single orchestrated run: baseline audit → sequential
 foundation work → parallel subagents where write surfaces are provably disjoint →
-dependent skills → deep review → one commit on a PR branch.
+dependent skills → deep review → a change-set left for the owner to review.
 
 ## Why this order (derived from the skills' write surfaces, not vibes)
 
@@ -78,10 +78,11 @@ target repo root. Replace `<pkg>` with the import package name.
 
 ````text
 /goal Set up this Python repository with the python-skills toolchain, end to end,
-until every bundled verifier exits 0 and the work is on a pushed PR branch.
-Work autonomously. Subagents NEVER commit, never run `git`, and never run
-`uv add`/`uv lock` unless their step says so — the orchestrator owns git and the
-lockfile. Never use `git commit --no-verify`; never force-push. If a permission,
+until every bundled verifier exits 0 and the change-set is ready for my review.
+Work autonomously. NOBODY runs `git commit` or `git push` — not subagents, not
+the orchestrator: every change stays in the working tree for me to review and
+commit. Subagents never run `uv add`/`uv lock` unless their step says so — the
+orchestrator owns the lockfile. If a permission,
 missing tool, or plan limit blocks a step, report it and continue — do not
 silently skip it and do not claim it done.
 
@@ -163,7 +164,7 @@ Phase 6 — ship:
 13. Produce a before/after table: per verifier, baseline errors vs final (must
     be 0), plus suite/coverage status. List every deferred item with its reason
     and every human-action item as an unchecked checkbox.
-14. Single orchestrator commit of everything on a new branch
+14. Leave everything uncommitted; report a summary and the changed-file list for my review
     (e.g. chore/agentic-setup), push the branch, and open a PR — main now has
     required checks, so the PR is the correct (and only) way in. Watch the PR
     checks; the run is not done until the aggregator reports green or the
@@ -177,7 +178,7 @@ Definition of Done:
 - Unknowns are reported as unknowns; manual steps (PyPI trusted publisher,
   required-reviewer environment, licensing-gated GitHub features) appear as
   unchecked boxes for the human — never as passed.
-- One commit, on a pushed PR branch, with a clean conventional message;
+- Nothing committed: the full change-set left in the working tree for my review;
   no --no-verify, no force-push, no direct push to main.
 ````
 

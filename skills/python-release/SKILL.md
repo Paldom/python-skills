@@ -38,7 +38,7 @@ pinned tools via `pip install <pkg>==<version>` — noted here once.
 Run the audit script first — it detects most of the failure modes this skill fixes:
 
 ```bash
-python3 scripts/check_release_setup.py --repo .
+python3 "${CLAUDE_SKILL_DIR}/scripts/check_release_setup.py" --repo .
 ```
 
 Then confirm by hand:
@@ -201,7 +201,7 @@ Notes on this shape:
 - Do not add `contents: write` here; publishing needs none. If you also create
   GitHub Releases, do it in a separate job with its own minimal permission.
 
-Re-run `python3 scripts/check_release_setup.py` — it verifies trigger,
+Re-run `python3 "${CLAUDE_SKILL_DIR}/scripts/check_release_setup.py"` — it verifies trigger,
 permissions, environment, SHA pinning, and leftover token secrets.
 
 ### 7. Cut a release (the repeatable manual flow)
@@ -238,7 +238,7 @@ trusted-publisher entry) before production — recipe in
 - Package page live on PyPI with the new version; file view shows attestations.
 - Install from a clean environment:
   `uvx --isolated --from "<package-name>==${VERSION}" python -c "import <module>"`.
-- `python3 scripts/check_release_setup.py` reports no errors (tag, version,
+- `python3 "${CLAUDE_SKILL_DIR}/scripts/check_release_setup.py"` reports no errors (tag, version,
   and lockfile all agree).
 
 ## Output spec — what done looks like

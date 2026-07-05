@@ -205,7 +205,7 @@ Details, rationale, and incident history: [references/workflow-hardening.md](ref
 ### 7. Verify end to end
 
 ```bash
-python3 scripts/check_workflows.py --repo .        # unpinned actions, float versions, missing if: always(), ...
+python3 "${CLAUDE_SKILL_DIR}/scripts/check_workflows.py" --repo .        # unpinned actions, float versions, missing if: always(), ...
 uvx zizmor==1.9.0 .github/workflows/               # security findings
 git switch -c ci-setup && git push -u origin ci-setup
 gh pr create --fill && gh pr checks --watch        # every job green, aggregator reports

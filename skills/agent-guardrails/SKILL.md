@@ -53,7 +53,7 @@ exists on disk* — the only layer that can do prevention rather than cleanup.
 ### 1. Audit what exists
 
 ```bash
-python3 scripts/check_guardrails.py --root .
+python3 "${CLAUDE_SKILL_DIR}/scripts/check_guardrails.py" --root .
 ```
 
 Read-only: reports settings files and scopes, wired hooks and their matchers,
@@ -166,7 +166,7 @@ echo '{"tool_input":{"command":"git commit --no-verify -m x"}}' \
 echo '{"tool_input":{"command":"git status"}}' \
   | .claude/hooks/guard-bash.sh; echo "exit=$?"        # expect exit=0
 # 2. Audit passes
-python3 scripts/check_guardrails.py --root .
+python3 "${CLAUDE_SKILL_DIR}/scripts/check_guardrails.py" --root .
 ```
 
 Then, in a live session: ask the agent to do a blocked action (expect a

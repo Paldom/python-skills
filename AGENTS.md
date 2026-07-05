@@ -24,11 +24,10 @@ distributed via the plugin manifest in `.claude-plugin/`.
 - Publication to skills.sh happens ONLY via the bundled `/publish-repo` skill
   (slash-invoked, needs the owner's go-ahead) — never flip repo visibility ad hoc.
   Deployment model: docs/deploying.md.
-- Never use `git commit --no-verify` or force-push main (hooks block the common
-  forms in agent sessions; the server-side `main` ruleset is the real gate).
-- Commits are authored **on the owner's behalf**: use the repo-local git identity
-  (the owner's account), and never mention Claude/AI assistance in commit messages
-  or PR bodies — no AI co-author trailers.
+- **Never run `git commit` or `git push`.** Leave every change in the working
+  tree for the owner to review and commit. (The bash-guard hook additionally
+  blocks `--no-verify` and force-pushes as a safety net; the server-side `main`
+  ruleset is the real gate.)
 - `.local/` is gitignored personal material (only its README is committed) — read
   ALL of it recursively, never commit its contents, never cite it as a committed
   path.

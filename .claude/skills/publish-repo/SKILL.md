@@ -22,8 +22,12 @@ Slash-invoked only: it flips repository visibility, which is hard to undo social
 
 ## Workflow
 
-1. **Pre-flight (hard gates — stop on any failure):**
+1. **Pre-flight (hard gates — stop on any failure):** the working tree must be
+   clean and pushed **by the owner** — this skill never runs `git commit` or
+   `git push`; if there are uncommitted changes, stop and hand the list to the
+   owner instead.
    ```bash
+   git status --porcelain          # must be empty
    make check                      # must end: 0 error(s)
    npx skills add . --list        # every skill under skills/ discovered
    gh skill publish --dry-run     # spec validation (gh >= 2.90; public preview)

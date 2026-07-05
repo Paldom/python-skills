@@ -144,7 +144,7 @@ never trust the source tree — verify the artifact:
 
 ```bash
 uv build
-python3 scripts/check_py_typed.py --package <pkg>
+python3 "${CLAUDE_SKILL_DIR}/scripts/check_py_typed.py" --package <pkg>
 ```
 
 The script exits non-zero if `py.typed` is missing from the source package,

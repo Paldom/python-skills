@@ -130,7 +130,7 @@ bugbear): `references/rule-selection.md`.
   comments on the next `--fix`.
 - Widen coverage one prefix at a time (`"S"`, `"PT"`, `"PTH"`, …), run
   `uv run ruff check .` after each addition, and fix or scope before adding more.
-- Sanity-check the result: `python3 scripts/check_ruff_config.py --root .`
+- Sanity-check the result: `python3 "${CLAUDE_SKILL_DIR}/scripts/check_ruff_config.py" --root .`
   (read-only; flags E501 double-reporting, `ALL`, formatter-conflicting rules,
   leftover legacy configs, missing target-version).
 
@@ -192,7 +192,7 @@ For what remains:
 
 ```bash
 uv run ruff check . && uv run ruff format --check . && echo LINT-OK
-python3 scripts/check_ruff_config.py --root .
+python3 "${CLAUDE_SKILL_DIR}/scripts/check_ruff_config.py" --root .
 ```
 
 ## Output spec
@@ -238,5 +238,5 @@ Done means all of:
   key translation, Flake8-plugin→prefix table, custom-plugin hybrid, incremental
   adoption for large legacy codebases.
 - `scripts/check_ruff_config.py` — read-only config sanity checker; exits non-zero
-  on findings. Run `python3 scripts/check_ruff_config.py --root <repo>`
+  on findings. Run `python3 "${CLAUDE_SKILL_DIR}/scripts/check_ruff_config.py" --root <repo>`
   (`--strict` to fail on warnings too).

@@ -34,7 +34,7 @@ humans or agents) until they stop proving anything.
 Run the read-only audit first — it catches shadowed and split config sources:
 
 ```bash
-python3 scripts/check_test_config.py --root .
+python3 "${CLAUDE_SKILL_DIR}/scripts/check_test_config.py" --root .
 ```
 
 Then establish the facts later steps depend on:
@@ -259,7 +259,7 @@ Configs and trade-offs in depth:
 
 1. `uv run pytest` — green.
 2. The gate-trip demonstration from step 4 exits non-zero.
-3. `python3 scripts/check_test_config.py --root .` exits 0.
+3. `python3 "${CLAUDE_SKILL_DIR}/scripts/check_test_config.py" --root .` exits 0.
 4. Report to the user: config location and table chosen (and why), thresholds,
    and which backstops (Hypothesis, mutation, multi-version) are wired vs
    deferred.

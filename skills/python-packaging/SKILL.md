@@ -191,7 +191,7 @@ lockfile reproducibility.
 Run the bundled checker (path relative to this skill's folder):
 
 ```bash
-python3 scripts/check_wheel.py --project-root /path/to/project /path/to/project/dist
+python3 "${CLAUDE_SKILL_DIR}/scripts/check_wheel.py" --project-root /path/to/project /path/to/project/dist
 ```
 
 It is read-only and exits non-zero with `ERROR` lines if: the wheel lacks
