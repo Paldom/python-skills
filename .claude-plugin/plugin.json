@@ -1,7 +1,7 @@
 {
   "name": "python-skills",
   "description": "Agent Skills and hooks for maintaining high-quality open-source Python packages - an agentic engineering setup covering linting, testing, packaging, releases, and CI quality gates.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "author": {
     "name": "Paldom",
     "url": "https://github.com/Paldom"

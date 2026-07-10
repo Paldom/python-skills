@@ -7,6 +7,8 @@ versioning: [SemVer](https://semver.org) on the plugin manifest
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-10
+
 ### Changed
 - `agent-guardrails` — the Stop gate now enforces commit-gate parity: when the
   repo has `.pre-commit-config.yaml` it runs pre-commit itself over the
