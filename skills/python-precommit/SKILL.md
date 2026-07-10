@@ -113,9 +113,22 @@ Two load-bearing details:
 ### 3. Non-Python files — format AND validate
 
 Formatting is not validation: a malformed GitHub workflow or `pyproject.toml`
-formats fine. Add both layers. Default (Prettier via the maintained fork —
-the original `pre-commit/mirrors-prettier` is **archived**, broken since
-Prettier v3; older tutorials still point at it):
+formats fine. Add both layers, and pick the formatter route by toolchain, not
+habit:
+
+- **`package.json` present** (Node already first-class) → Prettier via the
+  maintained fork — the original `pre-commit/mirrors-prettier` is **archived**,
+  broken since Prettier v3; older tutorials still point at it.
+- **Pure-Python repo** → prefer the Node-free stack (mdformat for Markdown,
+  taplo for TOML, yamllint for YAML — more tools, zero npm; recipes and
+  trade-offs in [references/config-recipes.md](references/config-recipes.md)).
+  Prettier's hook env bootstraps its own Node, and that bootstrap (first-run
+  download, proxies, unusual arches) is the top source of "the prettier hook
+  keeps erroring" reports. A team that wants one formatter across
+  YAML/Markdown/JSON can still choose Prettier — state the trade-off and see
+  the bootstrap fixes in the gotchas.
+
+Prettier route:
 
 ```yaml
   - repo: https://github.com/rbubley/mirrors-prettier   # maintained fork
@@ -138,9 +151,8 @@ Prettier v3; older tutorials still point at it):
       - id: check-dependabot
 ```
 
-If the team rejects the Node dependency ("Node tax"), use the Node-free stack
-instead: mdformat for Markdown, taplo for TOML, yamllint for YAML — more tools,
-zero npm. Recipes, trade-offs, and the yamllint-vs-Prettier conflict are in
+The validators (validate-pyproject, check-jsonschema) apply to both routes;
+the yamllint-vs-Prettier conflict is covered in
 [references/config-recipes.md](references/config-recipes.md).
 
 ### 4. Commit-message stage — conventional commits
@@ -289,7 +301,17 @@ that were configured but never installed. It never modifies anything.
   `additional_dependencies: [types-…, pydantic, …]` and accept partial
   checking, or prefer the local `uv run mypy .` pre-push hook (step 5).
 - **Prettier hook broken or frozen** → `pre-commit/mirrors-prettier` is
-  archived; use `rbubley/mirrors-prettier`.
+  archived; use `rbubley/mirrors-prettier`. Still erroring at hook-env install
+  (node download failures — proxies, offline machines, unusual arches)? Add
+  `language_version: system` to the prettier hook to reuse the machine's own
+  Node (which must then exist everywhere, including CI), or switch a
+  pure-Python repo to the Node-free stack (step 3).
+- **Agent-authored changes keep failing these hooks at the owner's commit**
+  (prettier reformats, whitespace fixers fire) → a parity gap in the agent
+  layer, not a pre-commit problem: the agent's Stop gate must run this same
+  config (`pre-commit run --files <changed>`) before signing off — the
+  agent-guardrails skill ships that gate. Never let an agent re-implement a
+  subset of the commit gate; subsets drift.
 - **Prettier and ruff fight over files** → always scope Prettier with
   `types_or: [yaml, markdown, json]`. Note the type identifier for TypeScript
   is `ts`, not `typescript` — the wrong name silently matches nothing.

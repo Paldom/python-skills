@@ -16,6 +16,9 @@ deny() { echo "$1" >&2; exit 2; }
 if echo "$CMD" | grep -qE 'git\s+commit[^|;&]*(\s--no-verify|\s-[a-zA-Z]*n)'; then
   deny "Blocked: 'git commit --no-verify' bypasses this repo's quality gates. Fix the failing checks, then commit normally."
 fi
+if echo "$CMD" | grep -qE '(^|[;&|]\s*)SKIP=\S+\s+git\s+commit\b'; then
+  deny "Blocked: 'SKIP=<hook> git commit' skips part of the commit gate. Fix the failing hook instead; SKIP is a human escape hatch, not an agent one."
+fi
 
 # 2. Force-push to main/master
 if echo "$CMD" | grep -qE 'git\s+push[^|;&]*(--force|-f)[^|;&]*\s(origin\s+)?(main|master)\b' \

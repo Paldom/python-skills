@@ -80,12 +80,12 @@ def check_settings_file(path: Path, root: Path) -> None:
                         elif not os.access(script, os.X_OK):
                             report("ERROR", str(path), f"{hwhere} script {m.group(1)} is not executable (chmod +x) — hook fails silently")
                         else:
-                            check_hook_script(script, event)
+                            check_hook_script(script, event, root)
                     if "timeout" not in h and event == "PostToolUse":
                         report("WARN", str(path), f"{hwhere} has no timeout — PostToolUse hooks run in the hot path; set a small explicit timeout")
 
 
-def check_hook_script(script: Path, event: str) -> None:
+def check_hook_script(script: Path, event: str, root: Path) -> None:
     try:
         text = script.read_text(encoding="utf-8", errors="replace")
     except OSError:
@@ -97,6 +97,8 @@ def check_hook_script(script: Path, event: str) -> None:
             break
     if event == "Stop" and "stop_hook_active" not in text:
         report("ERROR", str(script), "Stop hook without a stop_hook_active guard — this loops the first time verification cannot be fixed immediately")
+    if event == "Stop" and (root / ".pre-commit-config.yaml").is_file() and "pre-commit" not in text:
+        report("WARN", str(script), "repo has .pre-commit-config.yaml but the Stop gate never runs pre-commit — the agent can sign off changes the commit hook will reject (parity gap)")
     if "jq " in text and "command -v jq" not in text:
         report("WARN", str(script), "uses jq without checking it exists — on machines without jq the hook fails silently")
 

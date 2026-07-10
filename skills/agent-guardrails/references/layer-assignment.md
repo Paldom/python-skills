@@ -33,8 +33,11 @@ a clean environment goes to CI; only CI is un-bypassable.
   refusing the write **before the file exists on disk**.
 - Deterministic single-file checks → PostToolUse soft feedback, re-verified
   at pre-commit. Sub-second budget; the hook runs on every matching call.
-- Turn-level verification ("don't say done with red checks") → Stop hook
-  running a fast subset, with CI as the real gate.
+- Turn-level verification ("don't say done with red checks") → Stop hook.
+  When the repo has pre-commit, the Stop hook runs *that config* over the
+  change set (`pre-commit run --files`) — delegation, not duplication: the
+  same gate, evaluated before sign-off instead of at commit. Otherwise one
+  fast verify command. CI stays the real gate.
 - Whole-diff, contributor-agnostic checks → pre-commit.
 - Slow, environment-dependent, or security-critical → CI (security-critical
   runs at pre-commit AND CI).
@@ -48,7 +51,10 @@ auto-fixes and the later one only verifies (`ruff format` at the hook,
 times is the "running ruff three times" complaint — the layers exist to catch
 *different* failure classes, not to repeat each other. If CI has to fix
 something, the earlier layers didn't do their job; if a hook takes 30 seconds,
-it's at the wrong layer.
+it's at the wrong layer. Delegation is the exception that proves the rule: a
+Stop gate running `pre-commit run --files` is not a second definition of the
+checks, it is the same definition evaluated earlier — duplication means
+maintaining two *definitions*, which is what drifts.
 
 ## Rollout
 

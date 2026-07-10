@@ -20,8 +20,10 @@ case "$FILE_PATH" in
     uv run ruff format "$FILE_PATH" >/dev/null 2>&1 || true
     ;;
   *)
-    # Route other file types to their formatter here if wanted (taplo for
-    # .toml, prettier/mdformat for .md/.yaml) — dispatch by extension, never
+    # Non-Python files (yaml/md/json/toml) are deliberately NOT checked here:
+    # routing them through pre-commit costs a 1-3 s env spin-up on every edit.
+    # The Stop gate covers them with the repo's own pre-commit config before
+    # sign-off. If you add per-type feedback, dispatch by extension — never
     # one formatter for everything.
     ;;
 esac

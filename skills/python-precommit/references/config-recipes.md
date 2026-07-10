@@ -104,11 +104,24 @@ Stage placement budgets (practitioner heuristic, not a standard):
 
 ## 2. Non-Python formatting — Prettier route
 
-Prettier is the mature default for YAML/JSON/Markdown. Two catches:
+Prettier is the mature choice for YAML/JSON/Markdown when Node is already in
+the toolchain (`package.json` present). Three catches:
 
 - **The original mirror is archived.** `pre-commit/mirrors-prettier` broke
   with Prettier v3's plugin changes and gets no updates; many tutorials still
   reference it. Use the maintained fork `rbubley/mirrors-prettier` (as above).
+- **The hook env bootstraps its own Node** (via nodeenv). That first-run
+  download is the top flake source — proxies, offline machines, unusual
+  architectures. Where it bites, pin the hook to the machine's Node instead:
+
+  ```yaml
+      - id: prettier
+        language_version: system   # reuse installed Node; skips the nodeenv download
+  ```
+
+  This trades the download flake for a new requirement: Node must exist on
+  every committing machine *and* in the CI mirror job. If that requirement is
+  unwanted, use the Node-free route (§3).
 - **Prettier cannot read `pyproject.toml`.** If you need to configure it
   (print width, prose wrap), it takes its own `.prettierrc`/`.prettierrc.toml`
   — the one place the single-config-file goal breaks. Add a `.prettierignore`

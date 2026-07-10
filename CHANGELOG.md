@@ -7,6 +7,22 @@ versioning: [SemVer](https://semver.org) on the plugin manifest
 
 ## [Unreleased]
 
+### Changed
+- `agent-guardrails` — the Stop gate now enforces commit-gate parity: when the
+  repo has `.pre-commit-config.yaml` it runs pre-commit itself over the
+  changed + untracked worktree files (twice, so auto-fix hooks like prettier
+  and `ruff --fix` converge instead of reading as failures; `uv run` fallback;
+  actionable block when pre-commit is missing), so the agent signs off only
+  changes `git commit` would accept. Stop timeout raised to 300 s with
+  pre-built-env guidance (a timed-out hook is non-blocking, i.e. a silent
+  pass); the bash guard also denies `SKIP=<hook> git commit`; the audit script
+  warns when a repo has pre-commit but the Stop gate never runs it.
+- `python-precommit` — the non-Python formatter route is now chosen by
+  toolchain (`package.json` → Prettier via the maintained fork; pure-Python →
+  the Node-free stack), with node-bootstrap failure fixes
+  (`language_version: system`) and an agent-parity gotcha cross-linking
+  agent-guardrails.
+
 ### Added
 - skills.sh distribution: `npx skills add Paldom/python-skills` quick start, repo-page
   groupings (`skills.sh.json`), a `skills-sh` CI job mirroring the consumer

@@ -12,6 +12,7 @@
     { "type": "should_trigger", "prompt": "devs keep skipping the hooks with --no-verify, how do we make the checks stick" },
     { "type": "should_trigger", "prompt": "validate pyproject.toml and the github workflow files before every commit" },
     { "type": "should_trigger", "prompt": "mirrors-prettier is archived, what should our pre-commit config use now" },
+    { "type": "should_trigger", "prompt": "the prettier hook keeps erroring when pre-commit tries to install node" },
     { "type": "should_trigger", "prompt": "block commits with trailing whitespace and leftover merge conflict markers" },
     { "type": "should_not_trigger", "prompt": "set up ruff and pick which lint rule sets to enable in pyproject.toml" },
     { "type": "should_not_trigger", "prompt": "add a Claude Code hook that runs ruff after every file edit" },
@@ -23,6 +24,7 @@
     { "type": "should_not_trigger", "prompt": "make the lint and test checks required before merging to main" },
     { "type": "should_not_trigger", "prompt": "enable secret scanning and push protection on the github repo" },
     { "type": "should_not_trigger", "prompt": "undo my last commit but keep the changes staged" },
+    { "type": "should_not_trigger", "prompt": "make the agent only sign off work when the pre-commit gate would accept it" },
     {
       "type": "quality",
       "prompt": "Set up pre-commit for this Python project",
@@ -49,7 +51,7 @@
       "prompt": "add formatting and validation for the yaml, markdown and toml files in this python repo",
       "expected_behavior": [
         "scopes the Markdown/YAML/JSON formatter with types_or so it never touches Python files",
-        "uses the maintained rbubley/mirrors-prettier fork (not the archived pre-commit/mirrors-prettier) or offers the Node-free stack (mdformat, taplo, yamllint) with the trade-off stated",
+        "picks the formatter route by toolchain: Prettier via the maintained rbubley/mirrors-prettier fork (never the archived pre-commit/mirrors-prettier) when Node/package.json is already present, the Node-free stack (mdformat, taplo, yamllint) for a pure-Python repo — trade-off stated either way",
         "pairs formatters with validators (validate-pyproject, check-jsonschema for GitHub workflows) because formatting does not catch structural errors",
         "pins a rev for every hook repo added"
       ]
@@ -62,6 +64,16 @@
         "moves slow checks like mypy or tests to the pre-push stage or CI, keeping the commit stage to a few seconds",
         "is honest that --no-verify cannot be blocked locally and confirms the same checks run in CI as the real gate",
         "mentions SKIP=<hook-id> as the narrower escape hatch instead of blanket --no-verify"
+      ]
+    },
+    {
+      "type": "quality",
+      "prompt": "our prettier pre-commit hook fails on half the machines with node download errors, fix it",
+      "expected_behavior": [
+        "identifies the hook-env Node bootstrap as the failure class (first-run download, proxies, unusual architectures) and verifies the config points at the maintained rbubley fork, not the archived pre-commit/mirrors-prettier",
+        "offers the two durable fixes: language_version: system on the prettier hook to reuse an installed Node, or switching a pure-Python repo to the Node-free stack (mdformat, taplo, yamllint)",
+        "keeps the formatter scoped with types_or and every rev pinned in whatever config it rewrites",
+        "confirms the CI mirror runs the same updated config so the fix is proven, not assumed"
       ]
     },
     {

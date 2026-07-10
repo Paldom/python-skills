@@ -62,7 +62,7 @@ parallel subagents → verified PR), paste the ready-made prompt from
 | [python-ci](skills/python-ci/) | Authors GitHub Actions quality gates — lint/type/test matrices, uv caching, an all-checks-passed aggregator, required checks, rulesets, action SHA pinning. |
 | [python-precommit](skills/python-precommit/) | Configures pre-commit — ruff, mypy, hygiene, commit-message and pre-push hooks, plus non-Python file formatting and validation, kept in sync with CI. |
 | [python-supply-chain](skills/python-supply-chain/) | Hardens the supply chain — Dependabot with cooldown, pip-audit, secret scanning and push protection, CodeQL, Scorecard, SBOMs, CODEOWNERS. |
-| [agent-guardrails](skills/agent-guardrails/) | Installs agentic guardrails — Claude Code hooks with the exit-code contract, settings wiring, AGENTS.md rules files, vetted public skills — and troubleshoots hooks. |
+| [agent-guardrails](skills/agent-guardrails/) | Installs agentic guardrails — Claude Code hooks with the exit-code contract, a Stop gate that signs off only what the repo's pre-commit would accept, AGENTS.md rules files, vetted public skills — and troubleshoots hooks. |
 
 Together they implement a layered enforcement architecture for agent-era Python
 maintenance: agent hooks (instant feedback) → pre-commit (commit gate) → CI +

@@ -14,6 +14,8 @@
     { "type": "should_trigger", "prompt": "is it safe to install this claude code plugin from a marketplace?" },
     { "type": "should_trigger", "prompt": "my stop hook loops forever when the tests fail" },
     { "type": "should_trigger", "prompt": "block the agent from reading .env files" },
+    { "type": "should_trigger", "prompt": "claude says its done but when I git commit, the pre-commit hooks reformat files and the commit fails" },
+    { "type": "should_trigger", "prompt": "make the agent leave the tree in a state our git hooks would accept before it stops" },
     { "type": "should_not_trigger", "prompt": "set up pre-commit for this repo" },
     { "type": "should_not_trigger", "prompt": "add git hooks that run ruff before every commit" },
     { "type": "should_not_trigger", "prompt": "add guardrails so claude's output gets validated with pydantic before we use it" },
@@ -25,6 +27,7 @@
     { "type": "should_not_trigger", "prompt": "enforce conventional commits with a commit-msg hook" },
     { "type": "should_not_trigger", "prompt": "write a github actions workflow that runs mypy on every PR" },
     { "type": "should_not_trigger", "prompt": "help me write a better system prompt for my support chatbot" },
+    { "type": "should_not_trigger", "prompt": "the prettier pre-commit hook errors with a node download failure when I commit by hand" },
     {
       "type": "quality",
       "prompt": "install agent guardrails in this python repo - hooks, settings.json, AGENTS.md, the works",
@@ -64,6 +67,17 @@
         "adds a deterministic layer: a PreToolUse hook on Bash that blocks bare pip/python invocations and tells the agent the uv equivalent in the error message",
         "the redirect message names the exact replacement command (uv add / uv run) so the agent can self-correct",
         "avoids breaking legitimate uses (uv run python, grep python) — the guard matches command position, not the substring anywhere"
+      ]
+    },
+    {
+      "type": "quality",
+      "prompt": "the agent keeps finishing work that then fails pre-commit on my machine - it should only sign off if the commit gate would pass",
+      "expected_behavior": [
+        "wires the Stop gate to run the repo's own pre-commit config over changed plus untracked files (pre-commit run --files, which checks the worktree without stashing) instead of re-implementing a subset of the checks",
+        "runs the gate twice so auto-fixing hooks (prettier, ruff --fix, whitespace fixers) converge instead of reading as failures, and treats a clean second run as pass",
+        "keeps the stop_hook_active guard and sets a generous explicit timeout, explaining that a timed-out hook is non-blocking - a silent false sign-off",
+        "handles the edges: no .pre-commit-config.yaml falls back to one fast verify command, a missing pre-commit binary produces an actionable install instruction, and hook environments get pre-built at setup so the first Stop is not a cold multi-minute build",
+        "states that CI remains the authoritative gate since local hooks are bypassable"
       ]
     },
     {
