@@ -3,6 +3,8 @@ name: publish-repo
 description: Publishes this Agent Skills repository to skills.sh - pre-flight checks, public visibility flip, protections (PVR, ruleset), consumer-style install verification, telemetry seeding, and repo-page groupings. Use when the user asks to publish, deploy, release, go public, or get listed on skills.sh. Not for authoring skills or editing scaffold infrastructure.
 disable-model-invocation: true
 argument-hint: [--dry-run]
+metadata:
+  internal: true
 ---
 
 # publish-repo

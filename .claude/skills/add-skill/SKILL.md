@@ -2,6 +2,8 @@
 name: add-skill
 description: Authors or improves an Agent Skill in this repo via the eval-first workflow - scope one purpose, write trigger evals, draft SKILL.md, validate, iterate. Use when the user asks to create, add, write, refine, or fix a skill ("add a skill for X", "improve triggering of Y"). Not for scaffolding a new repository or editing infrastructure (hooks, CI, the validator/scripts, docs).
 argument-hint: <skill-name or idea>
+metadata:
+  internal: true
 ---
 
 # add-skill
