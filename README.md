@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icon.svg" alt="python-skills icon" width="128"/>
+</p>
+
 # Python Skills
 
 [![CI](https://github.com/Paldom/python-skills/actions/workflows/ci.yml/badge.svg)](https://github.com/Paldom/python-skills/actions/workflows/ci.yml)
