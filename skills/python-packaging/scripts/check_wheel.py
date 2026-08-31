@@ -29,11 +29,36 @@ import tarfile
 import zipfile
 from pathlib import Path
 
-LEAK_TOP_LEVELS = {"tests", "test", "testing", "docs", "doc", "examples", "example", "benchmarks", "scripts"}
+LEAK_TOP_LEVELS = {
+    "tests",
+    "test",
+    "testing",
+    "docs",
+    "doc",
+    "examples",
+    "example",
+    "benchmarks",
+    "scripts",
+}
 SOURCE_SKIP_DIRS = {
-    ".git", ".hg", ".venv", "venv", ".env", "dist", "build", ".tox", ".nox",
-    ".eggs", "__pycache__", "node_modules", ".mypy_cache", ".ruff_cache",
-    ".pytest_cache", "tests", "test", "site-packages",
+    ".git",
+    ".hg",
+    ".venv",
+    "venv",
+    ".env",
+    "dist",
+    "build",
+    ".tox",
+    ".nox",
+    ".eggs",
+    "__pycache__",
+    "node_modules",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".pytest_cache",
+    "tests",
+    "test",
+    "site-packages",
 }
 
 errors: list[str] = []
@@ -82,7 +107,9 @@ def check_wheel(path: Path, expected: list[str]) -> None:
         err(label, f"not a valid zip/wheel: {exc}")
         return
 
-    dist_infos = sorted({n.split("/", 1)[0] for n in names if n.split("/", 1)[0].endswith(".dist-info")})
+    dist_infos = sorted(
+        {n.split("/", 1)[0] for n in names if n.split("/", 1)[0].endswith(".dist-info")}
+    )
     if len(dist_infos) != 1:
         err(label, f"expected exactly one *.dist-info directory, found {dist_infos or 'none'}")
     else:
@@ -95,10 +122,15 @@ def check_wheel(path: Path, expected: list[str]) -> None:
     infos.append(f"INFO {label}: top-level entries: {', '.join(tops) if tops else '(none)'}")
     if not tops:
         err(label, "wheel contains no importable top-level package or module")
-    for leak in sorted(set(t.lower() for t in tops) & LEAK_TOP_LEVELS):
-        err(label, f"top-level {leak!r} leaked into the wheel — constrain package discovery (src layout or packages.find)")
+    for leak in sorted({t.lower() for t in tops} & LEAK_TOP_LEVELS):
+        err(
+            label,
+            f"top-level {leak!r} leaked into the wheel — constrain package discovery (src layout or packages.find)",
+        )
     if len(tops) > 1:
-        infos.append(f"INFO {label}: {len(tops)} top-level entries — fine for setuptools/hatchling, unsupported by uv_build")
+        infos.append(
+            f"INFO {label}: {len(tops)} top-level entries — fine for setuptools/hatchling, unsupported by uv_build"
+        )
 
     for exp in expected:
         if exp not in names:
@@ -121,11 +153,30 @@ def check_sdist(path: Path) -> None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("dist_dir", nargs="?", default="dist", help="directory containing built artifacts (default: dist)")
-    ap.add_argument("--project-root", default=".", help="project root to scan for py.typed parity (default: cwd)")
-    ap.add_argument("--expect", action="append", default=[], metavar="PATH", help="archive path that must exist in every wheel (repeatable), e.g. my_package/py.typed")
-    ap.add_argument("--no-sdist", action="store_true", help="do not require an sdist (wheel-only builds)")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "dist_dir",
+        nargs="?",
+        default="dist",
+        help="directory containing built artifacts (default: dist)",
+    )
+    ap.add_argument(
+        "--project-root",
+        default=".",
+        help="project root to scan for py.typed parity (default: cwd)",
+    )
+    ap.add_argument(
+        "--expect",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="archive path that must exist in every wheel (repeatable), e.g. my_package/py.typed",
+    )
+    ap.add_argument(
+        "--no-sdist", action="store_true", help="do not require an sdist (wheel-only builds)"
+    )
     args = ap.parse_args()
 
     dist = Path(args.dist_dir)
@@ -142,7 +193,10 @@ def main() -> int:
     if not wheels:
         err(str(dist), "no *.whl found — run `uv build` first")
     if not sdists and not args.no_sdist:
-        err(str(dist), "no *.tar.gz sdist found — `uv build` produces both; pass --no-sdist if intentional")
+        err(
+            str(dist),
+            "no *.tar.gz sdist found — `uv build` produces both; pass --no-sdist if intentional",
+        )
 
     expected = list(args.expect) + find_source_py_typed(root)
     # de-duplicate, preserve order
@@ -161,8 +215,10 @@ def main() -> int:
         print(f"FAIL: {len(errors)} error(s) across {len(wheels)} wheel(s), {len(sdists)} sdist(s)")
         return 1
     checked = ", ".join(p.name for p in wheels + sdists)
-    print(f"PASS: verified {checked or 'nothing'}"
-          + (f" (required in wheel: {', '.join(expected)})" if expected else ""))
+    print(
+        f"PASS: verified {checked or 'nothing'}"
+        + (f" (required in wheel: {', '.join(expected)})" if expected else "")
+    )
     return 0
 
 

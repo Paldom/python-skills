@@ -37,9 +37,29 @@ Useful optional fields: `argument-hint` (slash-command placeholder),
 `allowed-tools` (least privilege; treat as best-effort, not a security boundary),
 `context: fork` + `agent` (run isolated in a subagent), `model` / `effort` (route
 mechanical skills cheaper). Keep frontmatter under ~20 lines; nest extras under
-`metadata:`. Reference bundled files via paths relative to the skill folder.
+`metadata:`. Reference bundled scripts/files via `${CLAUDE_SKILL_DIR}` (e.g.
+`python3 "${CLAUDE_SKILL_DIR}/scripts/check.py"`) so paths resolve regardless of
+the working directory or install location; `${CLAUDE_PROJECT_DIR}` for repo files.
 
 ## The description is the activation API
+
+**First decide who invokes the skill — it changes every rule below.**
+
+| Mode | Frontmatter | Who reaches it | What the description is for |
+| --- | --- | --- | --- |
+| **Model-invoked** (default) | *(nothing)* | the router, from the user's words | a router API: triggers, phrasings, exclusions |
+| **User-invoked** | `disable-model-invocation: true` | the user typing `/name` | one line in a slash menu |
+
+For a **user-invoked** skill nothing is ever routed, so trigger phrasings, negative
+triggers and the 150–400 char floor are dead weight — write one verb-first line that
+reads well in a `/` menu and stop. The most-installed community skill in the
+ecosystem is exactly this: `grill-me` is *"A relentless interview to sharpen a plan
+or design."*, 51 characters, and its whole body is one line delegating to an engine
+skill. `make check` applies the router rules only to model-invoked skills, and
+`make evals` skips user-invoked ones entirely (no router weighs them, so their
+trigger cases have nothing to prove — their `quality` cases still do).
+
+Everything from here to the end of this section is the **model-invoked** rule.
 
 At session start the model sees **only** `name` + `description` (~30–100 tokens).
 If the description doesn't match the user's words, the body might as well not exist.
@@ -68,7 +88,27 @@ Rules of thumb (community-measured, directional):
   review") fail to trigger ~half the time; skills for novel domains trigger
   near-perfectly. Encode what the model *gets wrong*, not what it already knows.
 
+### The alias-over-engine pattern
+
+When one capability wants both a memorable command *and* reuse by other skills,
+split it in two rather than compromising:
+
+- **the engine** — model-invoked, holds all the substance, routed normally, and
+  callable by name from any other skill;
+- **the alias** — user-invoked, a few lines, whose body just invokes the engine.
+
+The user gets a verb they remember; the engine stays a single source of truth that
+other skills compose with; and the two are validated under the rules that actually
+apply to each. This is how `grill-me` (alias, 1 line of body) and `grilling`
+(engine, 25 lines) are built. Do not duplicate the engine's content into the
+alias — the point is that there is one copy.
+
 ## Body structure
+
+**Target 25–150 lines; 500 is the hard ceiling, not the goal.** The most-installed
+skills in the ecosystem are short: `grilling` 25 lines, `web-design-guidelines` 39,
+`frontend-design` 51. Length past that belongs in `references/`, where it loads only
+when the body asks for it.
 
 Recommended order — aggressive H2/H3 structure, no long prose walls:
 

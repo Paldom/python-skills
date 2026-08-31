@@ -38,7 +38,31 @@ not a skill problem.
 - **3–5 `quality` cases**: 1 canonical, variations, 1–2 edge cases. Assertions are
   plain-language behavior checks, not exact output text.
 
-## Running trigger evals
+Both trigger counts are waived for **user-invoked** skills
+(`disable-model-invocation: true`) — nothing routes them, so trigger cases have
+nothing to prove. Their `quality` cases still apply.
+
+## The mechanical pass: `make evals`
+
+`scripts/run_evals.py` scores every trigger prompt against every description in the
+repo — TF-IDF cosine over `name` + `description`, stdlib only, no model call. It runs
+in CI and catches the failure modes that are purely mechanical:
+
+| Check | Fails when |
+| --- | --- |
+| vocabulary overlap | a `should_trigger` prompt shares no words with the description — the router has nothing to match on |
+| top-K rank | a sibling outranks the skill on the skill's own prompt (`--top-k`, default 3) |
+| routing collision | two descriptions are near-duplicates (cosine ≥ 0.75; ≥ 0.50 warns) |
+| negative aim | a `should_not_trigger` prompt matches the description better than *every* `should_trigger` one |
+| rank-1 ratchet | the share of prompts ranking #1 falls below `--min-rank1` (the floor lives in the `Makefile`) |
+
+**Know what it cannot do.** It is a lexical proxy, not the router. This repo asks for
+negatives that are near-misses *sharing keywords* — built to be lexically close and
+semantically distant, which is exactly the distinction TF-IDF cannot draw. So the
+negative check is deliberately weak (see the table), and passing it is necessary,
+never sufficient. The stochastic part still needs a real agent:
+
+## Running trigger evals against a real agent
 
 There is no fully automated harness here (activation is stochastic); the working
 protocol:

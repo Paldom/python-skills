@@ -5,6 +5,7 @@ Exit 2 feeds stderr back to Claude as actionable feedback (the write already lan
 PostToolUse cannot undo it, only steer the next step). Anything that is not a SKILL.md
 exits 0 untouched. Scoped to the single edited file: must stay sub-second.
 """
+
 from __future__ import annotations
 
 import json
@@ -42,15 +43,21 @@ def main() -> int:
     if not os.path.isfile(validator):
         return 0
 
+    # S603: argv is a fixed list — this interpreter, a path we just confirmed is a
+    # file in this repo, and the edited file's path. No shell, so nothing in
+    # file_path can be interpreted as a command.
     proc = subprocess.run(
         [sys.executable, validator, "--file", file_path, "--root", project_dir],
-        capture_output=True, text=True, timeout=30, cwd=project_dir,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        cwd=project_dir,
+        check=False,
     )
     if proc.returncode != 0:
         sys.stderr.write(
             "SKILL.md validation failed — fix these before continuing "
-            "(rules: docs/skill-authoring.md):\n"
-            + (proc.stderr or proc.stdout)
+            "(rules: docs/skill-authoring.md):\n" + (proc.stderr or proc.stdout)
         )
         return 2
     return 0

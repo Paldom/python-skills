@@ -163,8 +163,12 @@ def parse_config(lines: list[str]) -> tuple[list[Repo], list[str] | None]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("path", nargs="?", default=".pre-commit-config.yaml",
-                        help="config to check (default: ./.pre-commit-config.yaml)")
+    parser.add_argument(
+        "path",
+        nargs="?",
+        default=".pre-commit-config.yaml",
+        help="config to check (default: ./.pre-commit-config.yaml)",
+    )
     parser.add_argument("--strict", action="store_true", help="warnings also fail")
     args = parser.parse_args()
 
@@ -177,8 +181,10 @@ def main() -> int:
 
     repos, diht = parse_config(lines)
     if not repos:
-        print(f"ERROR {path}:1: E000 no `- repo:` entries found — not a pre-commit config?",
-              file=sys.stderr)
+        print(
+            f"ERROR {path}:1: E000 no `- repo:` entries found — not a pre-commit config?",
+            file=sys.stderr,
+        )
         return 1
 
     errors: list[str] = []
@@ -191,16 +197,20 @@ def main() -> int:
         local = repo.url in ("local", "meta")
 
         if repo.url.endswith("pre-commit/mirrors-prettier"):
-            errors.append(f"{path}:{repo.line}: E001 pre-commit/mirrors-prettier is "
-                          "archived (broken since Prettier v3) — use "
-                          "https://github.com/rbubley/mirrors-prettier")
+            errors.append(
+                f"{path}:{repo.line}: E001 pre-commit/mirrors-prettier is "
+                "archived (broken since Prettier v3) — use "
+                "https://github.com/rbubley/mirrors-prettier"
+            )
 
         if not local:
             rev = (repo.rev or "").strip()
             if rev.lower() in MUTABLE_REVS or rev.startswith("refs/heads/"):
-                errors.append(f"{path}:{repo.rev_line or repo.line}: E002 repo {repo.url} "
-                              f"has {'no rev' if not rev else f'mutable rev {rev!r}'} — "
-                              "pin a tag or full commit SHA for reproducibility")
+                errors.append(
+                    f"{path}:{repo.rev_line or repo.line}: E002 repo {repo.url} "
+                    f"has {'no rev' if not rev else f'mutable rev {rev!r}'} — "
+                    "pin a tag or full commit SHA for reproducibility"
+                )
             elif not SHA_RE.match(rev):
                 tag_pinned += 1
 
@@ -210,49 +220,82 @@ def main() -> int:
 
             for key in ("types", "types_or"):
                 if "typescript" in [t.lower() for t in hook.list_of(key)]:
-                    errors.append(f"{path}:{hook.keys[key][2]}: E003 file type 'typescript' "
-                                  "does not exist in identify — use 'ts' (silently matches "
-                                  "nothing as written)")
+                    errors.append(
+                        f"{path}:{hook.keys[key][2]}: E003 file type 'typescript' "
+                        "does not exist in identify — use 'ts' (silently matches "
+                        "nothing as written)"
+                    )
 
             if hid in RUFF_LINT_IDS:
                 lint_seen_at = idx
                 hook_args = hook.list_of("args")
                 if "--fix" in hook_args and "--exit-non-zero-on-fix" not in hook_args:
-                    warnings.append(f"{path}:{hook.line}: W101 ruff hook has --fix without "
-                                    "--exit-non-zero-on-fix — it will auto-fix, leave the fix "
-                                    "unstaged, and let the commit through with unfixed content")
-            if hid == "ruff-format" and lint_seen_at is None and any(
-                    h.hook_id in RUFF_LINT_IDS for h in repo.hooks):
-                warnings.append(f"{path}:{hook.line}: W102 ruff-format runs before the ruff "
-                                "lint hook — order fixer first, formatter second, or fixes "
-                                "get reformatted in a second pass")
+                    warnings.append(
+                        f"{path}:{hook.line}: W101 ruff hook has --fix without "
+                        "--exit-non-zero-on-fix — it will auto-fix, leave the fix "
+                        "unstaged, and let the commit through with unfixed content"
+                    )
+            if (
+                hid == "ruff-format"
+                and lint_seen_at is None
+                and any(h.hook_id in RUFF_LINT_IDS for h in repo.hooks)
+            ):
+                warnings.append(
+                    f"{path}:{hook.line}: W102 ruff-format runs before the ruff "
+                    "lint hook — order fixer first, formatter second, or fixes "
+                    "get reformatted in a second pass"
+                )
 
-            if repo.url.endswith("pre-commit/mirrors-mypy") and "additional_dependencies" not in hook.keys:
-                warnings.append(f"{path}:{hook.line}: W103 mirrors-mypy without "
-                                "additional_dependencies — the isolated env has none of your "
-                                "project's deps/stubs; add them or use a local `uv run mypy` hook")
+            if (
+                repo.url.endswith("pre-commit/mirrors-mypy")
+                and "additional_dependencies" not in hook.keys
+            ):
+                warnings.append(
+                    f"{path}:{hook.line}: W103 mirrors-mypy without "
+                    "additional_dependencies — the isolated env has none of your "
+                    "project's deps/stubs; add them or use a local `uv run mypy` hook"
+                )
 
             if hid == "prettier" and "types" not in hook.keys and "types_or" not in hook.keys:
-                warnings.append(f"{path}:{hook.line}: W104 prettier hook is not scoped — add "
-                                "types_or: [yaml, markdown, json] so it never touches Python files")
+                warnings.append(
+                    f"{path}:{hook.line}: W104 prettier hook is not scoped — add "
+                    "types_or: [yaml, markdown, json] so it never touches Python files"
+                )
 
             for stage in hook.list_of("stages"):
                 if stage in LEGACY_STAGES:
-                    warnings.append(f"{path}:{hook.keys['stages'][2]}: W106 legacy stage name "
-                                    f"{stage!r} — renamed {LEGACY_STAGES[stage]!r} in pre-commit 3.2")
+                    warnings.append(
+                        f"{path}:{hook.keys['stages'][2]}: W106 legacy stage name "
+                        f"{stage!r} — renamed {LEGACY_STAGES[stage]!r} in pre-commit 3.2"
+                    )
                     stage = LEGACY_STAGES[stage]
-                if stage in ("commit-msg", "pre-push", "pre-merge-commit", "post-checkout",
-                             "post-commit", "post-merge", "post-rewrite", "prepare-commit-msg") \
-                        and stage not in installed:
-                    warnings.append(f"{path}:{hook.keys['stages'][2]}: W105 hook "
-                                    f"{hid!r} uses stage {stage!r} but "
-                                    f"{'default_install_hook_types omits it' if diht is not None else 'there is no default_install_hook_types'}"
-                                    " — plain `pre-commit install` will never install it and "
-                                    "the hook silently won't run")
+                if (
+                    stage
+                    in (
+                        "commit-msg",
+                        "pre-push",
+                        "pre-merge-commit",
+                        "post-checkout",
+                        "post-commit",
+                        "post-merge",
+                        "post-rewrite",
+                        "prepare-commit-msg",
+                    )
+                    and stage not in installed
+                ):
+                    warnings.append(
+                        f"{path}:{hook.keys['stages'][2]}: W105 hook "
+                        f"{hid!r} uses stage {stage!r} but "
+                        f"{'default_install_hook_types omits it' if diht is not None else 'there is no default_install_hook_types'}"
+                        " — plain `pre-commit install` will never install it and "
+                        "the hook silently won't run"
+                    )
 
     if tag_pinned:
-        notes.append(f"{path}: N201 {tag_pinned} repo(s) pinned by tag — fine for most repos; "
-                     "`pre-commit autoupdate --freeze` pins full SHAs (tags can be re-pointed)")
+        notes.append(
+            f"{path}: N201 {tag_pinned} repo(s) pinned by tag — fine for most repos; "
+            "`pre-commit autoupdate --freeze` pins full SHAs (tags can be re-pointed)"
+        )
 
     for line in errors:
         print(f"ERROR {line}", file=sys.stderr)

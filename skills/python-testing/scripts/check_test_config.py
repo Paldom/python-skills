@@ -81,7 +81,9 @@ def addopts_as_string(value: object) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--root", type=Path, default=Path.cwd(), help="package repo root (default: cwd)")
+    ap.add_argument(
+        "--root", type=Path, default=Path.cwd(), help="package repo root (default: cwd)"
+    )
     ap.add_argument("--strict", action="store_true", help="treat warnings as errors")
     args = ap.parse_args()
     root = args.root.resolve()
@@ -105,13 +107,18 @@ def main() -> int:
         except tomllib.TOMLDecodeError as exc:
             err(str(pyproject), f"invalid TOML: {exc}")
     elif pp_text and tomllib is None:
-        info(str(pyproject), "Python < 3.11 (no tomllib) — key-level checks skipped, section-presence checks only")
+        info(
+            str(pyproject),
+            "Python < 3.11 (no tomllib) — key-level checks skipped, section-presence checks only",
+        )
 
     tool = pp_data.get("tool", {}) if isinstance(pp_data.get("tool", {}), dict) else {}
     pp_pytest_tbl = tool.get("pytest")
     if tomllib is not None and pp_text:
         pp_has_ini_options = isinstance(pp_pytest_tbl, dict) and "ini_options" in pp_pytest_tbl
-        pp_has_native_pytest = isinstance(pp_pytest_tbl, dict) and any(k != "ini_options" for k in pp_pytest_tbl)
+        pp_has_native_pytest = isinstance(pp_pytest_tbl, dict) and any(
+            k != "ini_options" for k in pp_pytest_tbl
+        )
         pp_has_coverage = "coverage" in tool
     else:
         pp_has_ini_options = has_exact_section(pp_text, "tool.pytest.ini_options")
@@ -127,22 +134,40 @@ def main() -> int:
     tox_ini_has_pytest = bool(tox_ini_text) and has_exact_section(tox_ini_text, "pytest")
 
     if pytest_ini.is_file() and pp_has_pytest:
-        err(str(pytest_ini), "pytest.ini exists alongside pytest config in pyproject.toml — pytest.ini silently wins; merge into one source and delete the other")
+        err(
+            str(pytest_ini),
+            "pytest.ini exists alongside pytest config in pyproject.toml — pytest.ini silently wins; merge into one source and delete the other",
+        )
     if setup_cfg_has_pytest and pp_has_pytest:
-        warn(str(setup_cfg), "[tool:pytest] in setup.cfg alongside pytest config in pyproject.toml — only one source is read; merge and delete the loser")
+        warn(
+            str(setup_cfg),
+            "[tool:pytest] in setup.cfg alongside pytest config in pyproject.toml — only one source is read; merge and delete the loser",
+        )
     if tox_ini_has_pytest and pp_has_pytest:
-        warn(str(tox_ini), "[pytest] section in tox.ini alongside pytest config in pyproject.toml — only one source is read; merge and delete the loser")
+        warn(
+            str(tox_ini),
+            "[pytest] section in tox.ini alongside pytest config in pyproject.toml — only one source is read; merge and delete the loser",
+        )
 
     # --- the pytest-9 native-table trap ---
     if pp_has_native_pytest:
-        warn(str(pyproject), "[tool.pytest] native table found — requires pytest >= 9 and is SILENTLY ignored on older pytest; run `pytest --version` and check the changelog, or use [tool.pytest.ini_options]")
+        warn(
+            str(pyproject),
+            "[tool.pytest] native table found — requires pytest >= 9 and is SILENTLY ignored on older pytest; run `pytest --version` and check the changelog, or use [tool.pytest.ini_options]",
+        )
 
     if not (pp_has_pytest or pytest_ini.is_file() or setup_cfg_has_pytest or tox_ini_has_pytest):
-        warn(str(root), "no pytest configuration found in pyproject.toml, pytest.ini, setup.cfg, or tox.ini — add [tool.pytest.ini_options] with testpaths and strict flags")
+        warn(
+            str(root),
+            "no pytest configuration found in pyproject.toml, pytest.ini, setup.cfg, or tox.ini — add [tool.pytest.ini_options] with testpaths and strict flags",
+        )
 
     # --- coverage config source conflicts (.coveragerc wins) ---
     if coveragerc.is_file() and pp_has_coverage:
-        err(str(coveragerc), ".coveragerc exists alongside [tool.coverage.*] in pyproject.toml — .coveragerc silently wins; keep exactly one source")
+        err(
+            str(coveragerc),
+            ".coveragerc exists alongside [tool.coverage.*] in pyproject.toml — .coveragerc silently wins; keep exactly one source",
+        )
 
     # --- key-level coverage checks (TOML-aware only) ---
     if tomllib is not None and pp_has_coverage and isinstance(tool.get("coverage"), dict):
@@ -151,22 +176,36 @@ def main() -> int:
         report = cov.get("report", {}) if isinstance(cov.get("report", {}), dict) else {}
 
         if run.get("branch") is not True:
-            warn(str(pyproject), "[tool.coverage.run] branch is not true — line-only coverage overstates; set branch = true")
+            warn(
+                str(pyproject),
+                "[tool.coverage.run] branch is not true — line-only coverage overstates; set branch = true",
+            )
         if run.get("parallel") is True and run.get("relative_files") is not True:
-            warn(str(pyproject), "[tool.coverage.run] parallel = true without relative_files = true — combining data across paths/runners will mismatch files")
+            warn(
+                str(pyproject),
+                "[tool.coverage.run] parallel = true without relative_files = true — combining data across paths/runners will mismatch files",
+            )
 
         ini = pp_pytest_tbl.get("ini_options", {}) if isinstance(pp_pytest_tbl, dict) else {}
         addopts = addopts_as_string(ini.get("addopts", "")) if isinstance(ini, dict) else ""
         has_gate = "fail_under" in report or "--cov-fail-under" in addopts
         if not has_gate:
-            warn(str(pyproject), "no coverage gate found — set fail_under under [tool.coverage.report] (80-90), then prove it trips with a non-zero exit")
+            warn(
+                str(pyproject),
+                "no coverage gate found — set fail_under under [tool.coverage.report] (80-90), then prove it trips with a non-zero exit",
+            )
         if "--cov" in addopts.split() or "--cov=" in addopts:
-            info(str(pyproject), "--cov baked into pytest addopts — every run (incl. single-test debugging) pays coverage overhead; --no-cov disables per run")
+            info(
+                str(pyproject),
+                "--cov baked into pytest addopts — every run (incl. single-test debugging) pays coverage overhead; --no-cov disables per run",
+            )
 
     for line in errors + warnings + infos:
         print(line, file=sys.stderr)
     n_fail = len(errors) + (len(warnings) if args.strict else 0)
-    print(f"{'FAIL' if n_fail else 'OK'}: {len(errors)} error(s), {len(warnings)} warning(s), {len(infos)} info")
+    print(
+        f"{'FAIL' if n_fail else 'OK'}: {len(errors)} error(s), {len(warnings)} warning(s), {len(infos)} info"
+    )
     return 1 if n_fail else 0
 
 

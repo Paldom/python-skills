@@ -1,0 +1,56 @@
+# Commit-time layer. The hook is convenience; CI is the enforcement — every check
+# here also runs in .github/workflows/ci.yml, because `git commit --no-verify`
+# bypasses all of this silently.
+#
+# Install once:  pre-commit install --install-hooks
+# Run manually:  pre-commit run --all-files
+#
+# Revs are pinned deliberately and must stay in lockstep with requirements-dev.txt:
+# an unpinned hook makes local and CI disagree, which is the top reported
+# lint-workflow failure. Bump with `pre-commit autoupdate` and review the diff.
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  # Hygiene — cheap, universal, and one real security check.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^managed-skills/
+      - id: end-of-file-fixer
+        exclude: ^managed-skills/
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: detect-private-key   # a key committed here ships to every installer
+
+  # Python lint + format. Order matters: fixer first, formatter second.
+  # --exit-non-zero-on-fix is load-bearing: without it ruff fixes the file, the
+  # hook passes, and the commit ships the *unfixed* content because the fix was
+  # never staged. Expect the fail -> `git add` -> recommit loop; that is correct.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.10
+    hooks:
+      - id: ruff-check
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # Formatting is not validation: a malformed workflow formats fine.
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.37.4
+    hooks:
+      - id: check-github-workflows
+      - id: check-dependabot
+
+  # The repo's own gate. Too slow for every commit, so it runs once per push —
+  # and it is the same command CI runs, so a green push means a green CI.
+  - repo: local
+    hooks:
+      - id: make-check
+        name: make check (validator, evals, self-checks, copy sync)
+        entry: make check
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

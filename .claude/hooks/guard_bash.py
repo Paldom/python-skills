@@ -9,6 +9,7 @@ Scope honesty: this guards the *agent's* Bash tool as a convenience. It is not a
 security boundary — humans and other processes are not covered, and server-side
 protection (a GitHub ruleset on main blocking force pushes) is the real gate.
 """
+
 from __future__ import annotations
 
 import json
@@ -113,9 +114,13 @@ def check_segment(toks: list[str]) -> str | None:
             "gates. Run `make check`, fix the failures, then commit normally."
         )
     if sub == "push":
-        forced = any(is_force_flag(t) for t in args if t.startswith("-")
-                     and not t.startswith("--force-with-lease")
-                     and not t.startswith("--force-if-includes"))
+        forced = any(
+            is_force_flag(t)
+            for t in args
+            if t.startswith("-")
+            and not t.startswith("--force-with-lease")
+            and not t.startswith("--force-if-includes")
+        )
         positionals: list[str] = []
         k = 0
         while k < len(args):

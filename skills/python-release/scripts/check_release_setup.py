@@ -85,10 +85,20 @@ def check_pyproject(repo: Path) -> tuple[str | None, str | None, bool]:
     dynamic = "version" in project.get("dynamic", [])
     version = project.get("version")
     if dynamic:
-        add("OK", "version-mode", str(pyproject), "dynamic versioning (git-tag-derived); skipping static version checks")
+        add(
+            "OK",
+            "version-mode",
+            str(pyproject),
+            "dynamic versioning (git-tag-derived); skipping static version checks",
+        )
         return normalize(name), None, True
     if not version:
-        add("ERROR", "version-missing", str(pyproject), "[project] has neither version nor dynamic = [\"version\"]")
+        add(
+            "ERROR",
+            "version-missing",
+            str(pyproject),
+            '[project] has neither version nor dynamic = ["version"]',
+        )
         return normalize(name), None, False
     add("OK", "version-mode", str(pyproject), f"static version {version}")
     return normalize(name), str(version), False
@@ -109,7 +119,9 @@ def check_lock_desync(repo: Path, name: str, version: str) -> None:
                 add("OK", "lock-sync", str(lock), f"uv.lock agrees with pyproject.toml ({version})")
             else:
                 add(
-                    "ERROR", "lock-desync", str(lock),
+                    "ERROR",
+                    "lock-desync",
+                    str(lock),
                     f"uv.lock records {locked} but pyproject.toml says {version} — "
                     f"run `uv lock --upgrade-package {name}` and commit uv.lock with the bump",
                 )
@@ -121,10 +133,15 @@ def check_tags(repo: Path, version: str | None, dynamic: bool) -> None:
     try:
         out = subprocess.run(
             ["git", "-C", str(repo), "tag", "--list"],
-            capture_output=True, text=True, check=True, timeout=30,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
         ).stdout
     except (OSError, subprocess.SubprocessError):
-        add("INFO", "git-tags", str(repo), "not a git repo or git unavailable — skipping tag checks")
+        add(
+            "INFO", "git-tags", str(repo), "not a git repo or git unavailable — skipping tag checks"
+        )
         return
     tagged = [(release_tuple(t), t) for t in out.split() if release_tuple(t)]
     if not tagged:
@@ -136,15 +153,27 @@ def check_tags(repo: Path, version: str | None, dynamic: bool) -> None:
         return
     current = release_tuple(version)
     if current == latest_tuple:
-        add("OK", "tag-sync", str(repo), f"pyproject version {version} matches latest tag {latest_tag}")
+        add(
+            "OK",
+            "tag-sync",
+            str(repo),
+            f"pyproject version {version} matches latest tag {latest_tag}",
+        )
     elif current and current < latest_tuple:
         add(
-            "ERROR", "tag-behind", str(repo),
+            "ERROR",
+            "tag-behind",
+            str(repo),
             f"latest tag {latest_tag} is AHEAD of pyproject version {version} — "
             "a bump was forgotten or the tag was cut from the wrong commit",
         )
     else:
-        add("INFO", "tag-sync", str(repo), f"pyproject {version} > latest tag {latest_tag} (unreleased bump pending)")
+        add(
+            "INFO",
+            "tag-sync",
+            str(repo),
+            f"pyproject {version} > latest tag {latest_tag} (unreleased bump pending)",
+        )
 
 
 def workflow_files(repo: Path) -> list[Path]:
@@ -157,7 +186,12 @@ def workflow_files(repo: Path) -> list[Path]:
 def check_workflows(repo: Path) -> None:
     files = workflow_files(repo)
     if not files:
-        add("WARN", "workflows", str(repo / ".github" / "workflows"), "no workflows directory — no publish automation")
+        add(
+            "WARN",
+            "workflows",
+            str(repo / ".github" / "workflows"),
+            "no workflows directory — no publish automation",
+        )
         return
     publish_found = False
     for wf in files:
@@ -169,13 +203,23 @@ def check_workflows(repo: Path) -> None:
         low = text.lower()
         for hint in TOKEN_HINTS:
             if hint in text:
-                add("WARN", "legacy-token", str(wf), f"references {hint} — long-lived token publishing; migrate to trusted publishing (OIDC)")
+                add(
+                    "WARN",
+                    "legacy-token",
+                    str(wf),
+                    f"references {hint} — long-lived token publishing; migrate to trusted publishing (OIDC)",
+                )
         if not any(h in low for h in PUBLISH_HINTS):
             continue
         publish_found = True
         check_publish_workflow(wf, text, low)
     if not publish_found:
-        add("WARN", "publish-workflow", str(repo / ".github" / "workflows"), "no publish workflow detected (no file mentions pypi / uv publish / twine upload)")
+        add(
+            "WARN",
+            "publish-workflow",
+            str(repo / ".github" / "workflows"),
+            "no publish workflow detected (no file mentions pypi / uv publish / twine upload)",
+        )
 
 
 def check_publish_workflow(wf: Path, text: str, low: str) -> None:
@@ -183,23 +227,53 @@ def check_publish_workflow(wf: Path, text: str, low: str) -> None:
     # Heuristic checks: line-oriented regexes, not a YAML parse. Good enough to
     # catch the standard misconfigurations; a hand-obfuscated workflow can fool them.
     if "pull_request_target" in low:
-        add("ERROR", "dangerous-trigger", rel, "publish-related workflow triggered by pull_request_target — a fork PR can run with secrets/OIDC access")
+        add(
+            "ERROR",
+            "dangerous-trigger",
+            rel,
+            "publish-related workflow triggered by pull_request_target — a fork PR can run with secrets/OIDC access",
+        )
     if re.search(r"^\s*tags:", text, re.MULTILINE) or "release:" in text:
         add("OK", "tag-trigger", rel, "tag/release-triggered")
     else:
-        add("WARN", "tag-trigger", rel, "no tag trigger found — packages should publish on explicit version tags, not every push")
+        add(
+            "WARN",
+            "tag-trigger",
+            rel,
+            "no tag trigger found — packages should publish on explicit version tags, not every push",
+        )
     if re.search(r"^\s*id-token:\s*write", text, re.MULTILINE):
         add("OK", "id-token", rel, "id-token: write present (OIDC)")
     elif not any(hint in text for hint in TOKEN_HINTS):
-        add("ERROR", "id-token", rel, "no `id-token: write` and no token secret — trusted publishing will fail to authenticate")
+        add(
+            "ERROR",
+            "id-token",
+            rel,
+            "no `id-token: write` and no token secret — trusted publishing will fail to authenticate",
+        )
     if re.search(r"^\s*environment:", text, re.MULTILINE):
         add("OK", "environment", rel, "gated environment present")
     else:
-        add("WARN", "environment", rel, "no `environment:` on the publish job — no human approval gate, and the PyPI publisher entry cannot pin one")
+        add(
+            "WARN",
+            "environment",
+            rel,
+            "no `environment:` on the publish job — no human approval gate, and the PyPI publisher entry cannot pin one",
+        )
     if re.search(r"^\s*workflow_call:", text, re.MULTILINE):
-        add("WARN", "workflow-call", rel, "publish logic behind workflow_call — PyPI validates the CALLING workflow's filename; exact-match may fail")
+        add(
+            "WARN",
+            "workflow-call",
+            rel,
+            "publish logic behind workflow_call — PyPI validates the CALLING workflow's filename; exact-match may fail",
+        )
     if re.search(r"^\s*contents:\s*write", text, re.MULTILINE):
-        add("WARN", "contents-write", rel, "contents: write in a publishing workflow — publishing needs none; keep tag-writing jobs in a separate workflow")
+        add(
+            "WARN",
+            "contents-write",
+            rel,
+            "contents: write in a publishing workflow — publishing needs none; keep tag-writing jobs in a separate workflow",
+        )
     for ref in USES_RE.findall(text):
         if ref.startswith(("./", "docker://")):
             continue
@@ -207,12 +281,21 @@ def check_publish_workflow(wf: Path, text: str, low: str) -> None:
         if not pin:
             add("WARN", "unpinned-action", rel, f"`{ref}` has no ref at all")
         elif not SHA40_RE.match(pin):
-            add("WARN", "unpinned-action", rel, f"`{ref}` pinned to a mutable ref — pin to a full 40-char commit SHA (mutable tags get hijacked)")
+            add(
+                "WARN",
+                "unpinned-action",
+                rel,
+                f"`{ref}` pinned to a mutable ref — pin to a full 40-char commit SHA (mutable tags get hijacked)",
+            )
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--repo", type=Path, default=Path("."), help="repo root to audit (default: cwd)")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "--repo", type=Path, default=Path("."), help="repo root to audit (default: cwd)"
+    )
     ap.add_argument("--strict", action="store_true", help="treat warnings as errors")
     args = ap.parse_args()
 

@@ -24,8 +24,18 @@ import zipfile
 from pathlib import Path
 
 SKIP_DIRS = {
-    "tests", "test", "docs", "doc", "examples", "scripts", "tools", "build",
-    "dist", "site-packages", "node_modules", "__pycache__",
+    "tests",
+    "test",
+    "docs",
+    "doc",
+    "examples",
+    "scripts",
+    "tools",
+    "build",
+    "dist",
+    "site-packages",
+    "node_modules",
+    "__pycache__",
 }
 
 failures = 0
@@ -63,7 +73,11 @@ def locate_package(root: Path, name: str | None) -> Path | None:
             pkg = base / name
             if (pkg / "__init__.py").is_file():
                 return pkg
-        report("ERROR", "source", f"package {name!r} not found under {root}/src or {root} (no __init__.py)")
+        report(
+            "ERROR",
+            "source",
+            f"package {name!r} not found under {root}/src or {root} (no __init__.py)",
+        )
         return None
     candidates = candidate_packages(root)
     if not candidates:
@@ -89,7 +103,9 @@ def contains_marker(members: list[str], pkg: str) -> bool:
 def check_wheel(dist: Path, pkg: str) -> None:
     whl = newest(dist, "*.whl")
     if whl is None:
-        report("ERROR", "wheel", f"no *.whl in {dist} — run `uv build` (or `python -m build`) first")
+        report(
+            "ERROR", "wheel", f"no *.whl in {dist} — run `uv build` (or `python -m build`) first"
+        )
         return
     try:
         with zipfile.ZipFile(whl) as zf:
@@ -100,14 +116,22 @@ def check_wheel(dist: Path, pkg: str) -> None:
     if contains_marker(members, pkg):
         report("OK", "wheel", f"{whl.name} contains {pkg}/py.typed")
     else:
-        report("ERROR", "wheel", f"{whl.name} is missing {pkg}/py.typed — configure the build backend "
-                                 "to include it (e.g. setuptools [tool.setuptools.package-data]) and rebuild")
+        report(
+            "ERROR",
+            "wheel",
+            f"{whl.name} is missing {pkg}/py.typed — configure the build backend "
+            "to include it (e.g. setuptools [tool.setuptools.package-data]) and rebuild",
+        )
 
 
 def check_sdist(dist: Path, pkg: str) -> None:
     sdist = newest(dist, "*.tar.gz")
     if sdist is None:
-        report("WARN", "sdist", f"no *.tar.gz in {dist} — skipping (sdist consumers rebuild from source)")
+        report(
+            "WARN",
+            "sdist",
+            f"no *.tar.gz in {dist} — skipping (sdist consumers rebuild from source)",
+        )
         return
     try:
         with tarfile.open(sdist, "r:gz") as tf:
@@ -118,16 +142,24 @@ def check_sdist(dist: Path, pkg: str) -> None:
     if contains_marker(members, pkg):
         report("OK", "sdist", f"{sdist.name} contains {pkg}/py.typed")
     else:
-        report("ERROR", "sdist", f"{sdist.name} is missing {pkg}/py.typed — sdist rebuilders "
-                                 "(conda-forge, distros) would ship an untyped package")
+        report(
+            "ERROR",
+            "sdist",
+            f"{sdist.name} is missing {pkg}/py.typed — sdist rebuilders "
+            "(conda-forge, distros) would ship an untyped package",
+        )
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--package", help="import package name (auto-detected when unambiguous)")
     ap.add_argument("--root", type=Path, default=Path.cwd(), help="project root (default: cwd)")
     ap.add_argument("--dist", type=Path, help="artifacts directory (default: <root>/dist)")
-    ap.add_argument("--source-only", action="store_true", help="only check the source tree, skip wheel/sdist")
+    ap.add_argument(
+        "--source-only", action="store_true", help="only check the source tree, skip wheel/sdist"
+    )
     args = ap.parse_args()
 
     root = args.root.resolve()
@@ -146,15 +178,23 @@ def main() -> int:
     if marker.is_file():
         report("OK", "source", f"{marker.relative_to(root)} exists")
     else:
-        report("ERROR", "source", f"{pkg_dir.relative_to(root)}/py.typed missing — create it "
-                                  f"(empty file) so PEP 561 checkers stop treating {pkg} as Any")
+        report(
+            "ERROR",
+            "source",
+            f"{pkg_dir.relative_to(root)}/py.typed missing — create it "
+            f"(empty file) so PEP 561 checkers stop treating {pkg} as Any",
+        )
 
     if not args.source_only:
         if dist.is_dir():
             check_wheel(dist, pkg)
             check_sdist(dist, pkg)
         else:
-            report("ERROR", "dist", f"{dist} does not exist — run `uv build` first, or pass --source-only")
+            report(
+                "ERROR",
+                "dist",
+                f"{dist} does not exist — run `uv build` first, or pass --source-only",
+            )
 
     if failures:
         print(f"FAIL: {failures} error(s)")

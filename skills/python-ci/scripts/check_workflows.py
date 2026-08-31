@@ -63,18 +63,33 @@ def check_uses(path: Path, lineno: int, line: str) -> None:
         return  # same-repo action/workflow: no ref to pin
     if ref.startswith("docker://"):
         if "@sha256:" not in ref:
-            add("ERROR", path, lineno, "E001",
-                f"docker action {ref!r} is not pinned by digest (@sha256:...)")
+            add(
+                "ERROR",
+                path,
+                lineno,
+                "E001",
+                f"docker action {ref!r} is not pinned by digest (@sha256:...)",
+            )
         return
     if "@" not in ref:
-        add("ERROR", path, lineno, "E001",
-            f"action {ref!r} has no ref at all — pin to a full commit SHA")
+        add(
+            "ERROR",
+            path,
+            lineno,
+            "E001",
+            f"action {ref!r} has no ref at all — pin to a full commit SHA",
+        )
         return
     pin = ref.rsplit("@", 1)[1]
     if not SHA_RE.match(pin):
-        add("ERROR", path, lineno, "E001",
+        add(
+            "ERROR",
+            path,
+            lineno,
+            "E001",
             f"action {ref!r} pinned to mutable ref {pin!r} — use the full 40-char "
-            "commit SHA with a trailing `# vX.Y.Z` comment")
+            "commit SHA with a trailing `# vX.Y.Z` comment",
+        )
 
 
 def check_python_versions(path: Path, lines: list[str]) -> None:
@@ -84,13 +99,23 @@ def check_python_versions(path: Path, lines: list[str]) -> None:
             return
         if BARE_VERSION_RE.match(token):
             if token.split(".")[1].endswith("0"):
-                add("ERROR", path, lineno, "E002",
+                add(
+                    "ERROR",
+                    path,
+                    lineno,
+                    "E002",
                     f"unquoted python-version {token} is YAML for the float "
-                    f"{float(token)} — quote it: '{token}'")
+                    f"{float(token)} — quote it: '{token}'",
+                )
             else:
-                add("WARN", path, lineno, "W004",
+                add(
+                    "WARN",
+                    path,
+                    lineno,
+                    "W004",
                     f"unquoted numeric python-version {token} — quote it; "
-                    "trailing-zero versions (3.10) silently break")
+                    "trailing-zero versions (3.10) silently break",
+                )
 
     i = 0
     while i < len(lines):
@@ -165,42 +190,70 @@ def check_file(path: Path, require_merge_group: bool) -> None:
     for n, ln in code_lines:
         check_uses(path, n, ln)
         if re.search(r"^\s*(-\s+)?pull_request_target\s*:?\s*(#.*)?$", ln):
-            add("WARN", path, n, "W002",
+            add(
+                "WARN",
+                path,
+                n,
+                "W002",
                 "pull_request_target trigger — runs with base-repo secrets on "
-                "untrusted fork input; audit or replace with pull_request")
+                "untrusted fork input; audit or replace with pull_request",
+            )
 
     check_python_versions(path, lines)
 
     if not any(re.match(r"^\s*permissions\s*:", ln) for _, ln in code_lines):
-        add("WARN", path, 1, "W001",
+        add(
+            "WARN",
+            path,
+            1,
+            "W001",
             "no `permissions:` block — GITHUB_TOKEN inherits the repo default "
-            "(often broad write); set `permissions: contents: read` at workflow level")
+            "(often broad write); set `permissions: contents: read` at workflow level",
+        )
 
     if require_merge_group and not any(
         re.search(r"^\s*(-\s+)?merge_group\s*:?\s*(#.*)?$", ln) for _, ln in code_lines
     ):
-        add("WARN", path, 1, "W003",
+        add(
+            "WARN",
+            path,
+            1,
+            "W003",
             "no merge_group trigger — with a merge queue enabled, required checks "
-            "from this workflow never report at queue time")
+            "from this workflow never report at queue time",
+        )
 
     for name, lineno, block in job_blocks(lines):
         if AGGREGATOR_NAME_RE.search(name):
             has_needs = any(re.match(r"^\s*needs\s*:", ln) for ln in block)
             has_always = any(ALWAYS_RE.match(ln) for ln in block)
             if has_needs and not has_always:
-                add("ERROR", path, lineno, "E003",
+                add(
+                    "ERROR",
+                    path,
+                    lineno,
+                    "E003",
                     f"aggregator job {name!r} has needs: but no `if: always()` — "
                     "it will be SKIPPED when a dependency fails, and a skipped "
-                    "required check counts as success")
+                    "required check counts as success",
+                )
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--repo", type=Path, default=Path.cwd(),
-                    help="repo root containing .github/workflows/ (default: cwd)")
-    ap.add_argument("--require-merge-group", action="store_true",
-                    help="warn when a workflow lacks a merge_group trigger")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "--repo",
+        type=Path,
+        default=Path.cwd(),
+        help="repo root containing .github/workflows/ (default: cwd)",
+    )
+    ap.add_argument(
+        "--require-merge-group",
+        action="store_true",
+        help="warn when a workflow lacks a merge_group trigger",
+    )
     ap.add_argument("--strict", action="store_true", help="treat warnings as errors")
     args = ap.parse_args()
 
@@ -220,8 +273,10 @@ def main() -> int:
     n_err = sum(1 for f in findings if f[0] == "ERROR")
     n_warn = len(findings) - n_err
     failed = n_err + (n_warn if args.strict else 0)
-    print(f"{'FAIL' if failed else 'OK'}: {n_err} error(s), {n_warn} warning(s) "
-          f"across {len(files)} workflow file(s)")
+    print(
+        f"{'FAIL' if failed else 'OK'}: {n_err} error(s), {n_warn} warning(s) "
+        f"across {len(files)} workflow file(s)"
+    )
     return 1 if failed else 0
 
 

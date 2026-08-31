@@ -35,15 +35,28 @@ except ModuleNotFoundError:  # Python < 3.11
 # W191/E111/E114/E117 also conflict but are preview-only rules — a plain
 # select = ["E", "W"] does not enable them, so warning on them would be noise.
 FORMATTER_CONFLICTS = (
-    "COM812", "COM819", "ISC001", "ISC002",
-    "Q000", "Q001", "Q002", "Q003",
-    "D206", "D300",
+    "COM812",
+    "COM819",
+    "ISC001",
+    "ISC002",
+    "Q000",
+    "Q001",
+    "Q002",
+    "Q003",
+    "D206",
+    "D300",
 )
 LEGACY_TOOLS = ("black", "flake8", "isort", "pyupgrade", "autoflake")
 # Lint settings that belong under [tool.ruff.lint], not top-level [tool.ruff]
 DEPRECATED_TOP_LEVEL = (
-    "select", "extend-select", "ignore", "extend-ignore",
-    "per-file-ignores", "fixable", "unfixable", "external",
+    "select",
+    "extend-select",
+    "ignore",
+    "extend-ignore",
+    "per-file-ignores",
+    "fixable",
+    "unfixable",
+    "external",
 )
 
 findings: list[tuple[str, str, str]] = []  # (level, file, message)
@@ -83,7 +96,10 @@ def selected(code: str, select: list[str]) -> bool:
 def check_legacy_remnants(root: Path, pyproject: dict) -> None:
     for name in (".flake8", ".isort.cfg"):
         if (root / name).is_file():
-            err(name, "legacy config file present — Ruff never reads it; translate to [tool.ruff*] and delete")
+            err(
+                name,
+                "legacy config file present — Ruff never reads it; translate to [tool.ruff*] and delete",
+            )
     for name in ("setup.cfg", "tox.ini"):
         p = root / name
         if p.is_file():
@@ -93,11 +109,17 @@ def check_legacy_remnants(root: Path, pyproject: dict) -> None:
                 continue
             for section in ("[flake8]", "[isort]"):
                 if re.search(rf"^\s*{re.escape(section)}\s*$", text, re.MULTILINE):
-                    err(name, f"legacy {section} section present — Ruff never reads it; translate and delete")
+                    err(
+                        name,
+                        f"legacy {section} section present — Ruff never reads it; translate and delete",
+                    )
     tool = pyproject.get("tool", {})
     for legacy in ("black", "isort"):
         if legacy in tool:
-            err("pyproject.toml", f"[tool.{legacy}] present alongside Ruff — silently ignored by Ruff and a conflict source; translate and delete")
+            err(
+                "pyproject.toml",
+                f"[tool.{legacy}] present alongside Ruff — silently ignored by Ruff and a conflict source; translate and delete",
+            )
 
     # legacy tools still declared as dependencies
     dep_lists: list[tuple[str, list]] = []
@@ -112,7 +134,10 @@ def check_legacy_remnants(root: Path, pyproject: dict) -> None:
         for dep in deps:
             base = re.split(r"[\s\[<>=!~;]", dep.strip(), maxsplit=1)[0].lower()
             if base in LEGACY_TOOLS or base.startswith("flake8-"):
-                warn("pyproject.toml", f"{where} still lists {base!r} — Ruff replaces it; remove unless using the documented hybrid pattern")
+                warn(
+                    "pyproject.toml",
+                    f"{where} still lists {base!r} — Ruff replaces it; remove unless using the documented hybrid pattern",
+                )
 
 
 def check_ruff_tables(root: Path, ruff: dict) -> None:
@@ -120,7 +145,10 @@ def check_ruff_tables(root: Path, ruff: dict) -> None:
 
     for key in DEPRECATED_TOP_LEVEL:
         if key in ruff:
-            warn(where, f"[tool.ruff] {key!r} at top level is deprecated — move it under [tool.ruff.lint]")
+            warn(
+                where,
+                f"[tool.ruff] {key!r} at top level is deprecated — move it under [tool.ruff.lint]",
+            )
 
     lint = ruff.get("lint", {})
     select = [s for s in (lint.get("select") or ruff.get("select") or []) if isinstance(s, str)]
@@ -129,18 +157,30 @@ def check_ruff_tables(root: Path, ruff: dict) -> None:
     effective_select = select + extend_select
 
     if not effective_select:
-        warn(where, "no [tool.ruff.lint] select — Ruff's default is only E+F, far less coverage than a typical Flake8+plugins stack")
+        warn(
+            where,
+            "no [tool.ruff.lint] select — Ruff's default is only E+F, far less coverage than a typical Flake8+plugins stack",
+        )
     if "ALL" in effective_select:
-        warn(where, 'select includes "ALL" — every Ruff upgrade silently enables new rules; prefer an explicit list (or hard-pin Ruff and review each bump)')
+        warn(
+            where,
+            'select includes "ALL" — every Ruff upgrade silently enables new rules; prefer an explicit list (or hard-pin Ruff and review each bump)',
+        )
 
     # This skill's default posture is lint + `ruff format` together, so
     # formatter-conflicting rules are always worth flagging.
     if effective_select:
         if selected("E501", effective_select) and "E501" not in ignore:
-            warn(where, 'E501 enabled while using ruff format — the formatter owns line length; add "E501" to [tool.ruff.lint] ignore')
+            warn(
+                where,
+                'E501 enabled while using ruff format — the formatter owns line length; add "E501" to [tool.ruff.lint] ignore',
+            )
         for code in FORMATTER_CONFLICTS:
             if code not in ignore and selected(code, effective_select):
-                warn(where, f"{code} conflicts with ruff format — remove its prefix from select or add it to ignore (docs.astral.sh/ruff/formatter/#conflicting-lint-rules)")
+                warn(
+                    where,
+                    f"{code} conflicts with ruff format — remove its prefix from select or add it to ignore (docs.astral.sh/ruff/formatter/#conflicting-lint-rules)",
+                )
 
     pfi = lint.get("per-file-ignores") or ruff.get("per-file-ignores") or {}
     for pattern in pfi:
@@ -149,19 +189,27 @@ def check_ruff_tables(root: Path, ruff: dict) -> None:
         except (ValueError, NotImplementedError):
             continue
         if not matched:
-            warn(where, f"per-file-ignores pattern {pattern!r} matches no files — typo? the ignore silently never applies")
+            warn(
+                where,
+                f"per-file-ignores pattern {pattern!r} matches no files — typo? the ignore silently never applies",
+            )
 
 
 def check_target_version(pyproject: dict) -> None:
     ruff = pyproject.get("tool", {}).get("ruff", {})
     requires = pyproject.get("project", {}).get("requires-python")
     if not ruff.get("target-version") and not requires:
-        warn("pyproject.toml", "neither [tool.ruff] target-version nor project.requires-python is set — Ruff assumes py310 and UP autofixes may emit syntax your oldest runtime cannot parse")
+        warn(
+            "pyproject.toml",
+            "neither [tool.ruff] target-version nor project.requires-python is set — Ruff assumes py310 and UP autofixes may emit syntax your oldest runtime cannot parse",
+        )
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--root", type=Path, default=Path.cwd(), help="repo root to check (default: cwd)")
+    ap.add_argument(
+        "--root", type=Path, default=Path.cwd(), help="repo root to check (default: cwd)"
+    )
     ap.add_argument("--strict", action="store_true", help="exit 1 on warnings too")
     args = ap.parse_args()
     root = args.root.resolve()
@@ -171,7 +219,10 @@ def main() -> int:
         return 2
     pyproject_path = root / "pyproject.toml"
     if not pyproject_path.is_file():
-        print(f"ERROR {pyproject_path}: not found — run from (or --root to) the package repo", file=sys.stderr)
+        print(
+            f"ERROR {pyproject_path}: not found — run from (or --root to) the package repo",
+            file=sys.stderr,
+        )
         return 2
     try:
         pyproject = tomllib.loads(pyproject_path.read_text(encoding="utf-8"))
@@ -183,11 +234,20 @@ def main() -> int:
     ruff_toml = [n for n in ("ruff.toml", ".ruff.toml") if (root / n).is_file()]
 
     if ruff_cfg is None and not ruff_toml:
-        err("pyproject.toml", "no [tool.ruff] section (and no ruff.toml) — Ruff is not configured; see SKILL.md step 3")
+        err(
+            "pyproject.toml",
+            "no [tool.ruff] section (and no ruff.toml) — Ruff is not configured; see SKILL.md step 3",
+        )
     if ruff_cfg is not None and ruff_toml:
-        warn("pyproject.toml", f"both [tool.ruff] and {ruff_toml[0]} exist — keep exactly one config source to avoid drift")
+        warn(
+            "pyproject.toml",
+            f"both [tool.ruff] and {ruff_toml[0]} exist — keep exactly one config source to avoid drift",
+        )
     if ruff_toml and ruff_cfg is None:
-        warn(ruff_toml[0], "config lives in ruff.toml — fine, but this checker only inspects pyproject.toml tables; legacy-remnant checks still apply")
+        warn(
+            ruff_toml[0],
+            "config lives in ruff.toml — fine, but this checker only inspects pyproject.toml tables; legacy-remnant checks still apply",
+        )
 
     if ruff_cfg is not None:
         check_ruff_tables(root, ruff_cfg)

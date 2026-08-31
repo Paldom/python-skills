@@ -18,12 +18,24 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Validate skills, evals, and plugin manifests
+      - name: Validate skills, evals, security rules, and plugin manifests
         run: python3 scripts/validate_skills.py
-      - name: Validate GitHub workflow files
+      - name: Score trigger evals (routing, collisions)
+        run: python3 scripts/run_evals.py
+      - name: Self-check the scorer and the security rules
         run: |
-          pip install --quiet -r requirements-dev.txt
-          check-jsonschema --builtin-schema vendor.github-workflows .github/workflows/*.yml
+          python3 scripts/test_run_evals.py
+          python3 scripts/test_validate_skills.py
+      - name: Install dev tooling
+        run: pip install --quiet -r requirements-dev.txt
+      # Same pinned ruff as .pre-commit-config.yaml and requirements-dev.txt, so a
+      # clean commit hook cannot mean a red CI.
+      - name: Lint and format check (ruff)
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Validate GitHub workflow files
+        run: check-jsonschema --builtin-schema vendor.github-workflows .github/workflows/*.yml
 
   # Mirrors what skills.sh consumers run: discoverability + a real install.
   skills-sh:
@@ -43,7 +55,10 @@ jobs:
           fi
           python3 -c "import json; json.load(open('skills.sh.json'))"
           # Validation-only tool; pinned for reproducibility (bump deliberately).
-          npx -y skills@1.5.14 add . --list
+          npx -y skills@1.5.19 add . --list | tee /tmp/skills-list.txt
+          # Leak gate: bundled dev skills are metadata.internal and must never
+          # be consumer-visible (no --skill '*' below: the wildcard opts them in).
+          ! grep -E '^[^A-Za-z0-9]*(add-skill|publish-repo)[[:space:]]*$' /tmp/skills-list.txt
           mkdir -p /tmp/skills-smoke && cd /tmp/skills-smoke
-          npx -y skills@1.5.14 add "$GITHUB_WORKSPACE" --skill '*' -a claude-code -y
-          npx -y skills@1.5.14 list -a claude-code
+          npx -y skills@1.5.19 add "$GITHUB_WORKSPACE" -a claude-code -y
+          npx -y skills@1.5.19 list -a claude-code

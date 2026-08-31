@@ -8,17 +8,26 @@ distributed via the plugin manifest in `.claude-plugin/`.
 
 ## Commands
 
-- Validate everything (the only gate): `make check`
+- Validate everything (the only gate): `make check` — validator (frontmatter,
+  evals, security rules, manifests), `make lint` (ruff), `make evals` (trigger
+  scoring), then the self-checks
+- Install the commit-time hooks once per clone: `make hooks`
 - Validate one file: `python3 scripts/validate_skills.py --file skills/<name>/SKILL.md`
 
 ## Non-negotiable conventions
 
 - **Eval-first**: write `skills/<name>/evals/evals.json` before the SKILL.md body.
 - Frontmatter `description` is a **single line** (multi-line silently disables the
-  skill), third person, with trigger phrasings and a "Not for …" exclusion.
+  skill), third person. Model-invoked skills add trigger phrasings and a "Not for …"
+  exclusion; user-invoked ones (`disable-model-invocation: true`) are never routed,
+  so they get one verb-first line and no trigger cases.
 - `name` equals the folder name, kebab-case.
-- SKILL.md bodies < 500 lines; long material goes to `references/` (linked one level
-  deep); deterministic steps go to `scripts/` with non-zero exit on failure.
+- Shipped Python is **stdlib-only**; ruff and pre-commit are dev tooling pinned in
+  `requirements-dev.txt`. Fix a ruff finding at the line with a reason, never by
+  dropping the rule. Never suppress a security finding to get green.
+- SKILL.md bodies target 25–150 lines (< 500 is the hard ceiling); long material goes
+  to `references/` (linked one level deep); deterministic steps go to `scripts/` with
+  non-zero exit on failure.
 - Every added/changed skill updates the README catalog table, `CHANGELOG.md`, and
   its `skills.sh.json` grouping.
 - Publication to skills.sh happens ONLY via the bundled `/publish-repo` skill

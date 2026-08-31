@@ -1,6 +1,6 @@
 ---
 name: python-ci
-description: Authors GitHub Actions quality-gate workflows for a Python repo — lint/type/test jobs, version matrices, uv caching, coverage upload, an all-checks-passed aggregator, required checks, rulesets, merge queues, SHA pinning. Use for 'set up CI', 'add a GitHub Actions workflow', 'make checks required', 'harden the workflows'. Not for release pipelines, pre-commit config, Dependabot, or secret scanning.
+description: Authors GitHub Actions quality-gate workflows for a Python repo — lint/type/test jobs, version matrices, uv caching, an all-checks-passed aggregator, required checks, rulesets, merge queues, SHA pinning, zizmor hardening. Use for 'set up continuous integration quality gates', 'make checks required', 'move branch protection to rulesets', 'harden the workflows'. Not for release pipelines or commit hooks.
 license: MIT
 ---
 
