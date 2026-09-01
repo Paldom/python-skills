@@ -3,5 +3,5 @@
 # Pins must match .pre-commit-config.yaml so local and CI never disagree.
 # Dependabot (pip ecosystem) keeps these fresh.
 check-jsonschema==0.37.4
-ruff==0.15.10
+ruff==0.16.5
 pre-commit==4.3.0
