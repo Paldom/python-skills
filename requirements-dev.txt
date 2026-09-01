@@ -4,4 +4,4 @@
 # Dependabot (pip ecosystem) keeps these fresh.
 check-jsonschema==0.37.4
 ruff==0.15.10
-pre-commit==4.3.0
+pre-commit==4.6.2
