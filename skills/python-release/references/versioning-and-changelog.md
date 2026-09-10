@@ -40,16 +40,20 @@ dynamic = ["version"]
 source = "vcs"
 ```
 
-`uv-dynamic-versioning` (with the uv build backend; VCS-tag-driven,
+`uv-dynamic-versioning` (a **hatchling** plugin — it does not work with the
+`uv_build` backend, which has no dynamic-versioning support; VCS-tag-driven,
 <https://pypi.org/project/uv-dynamic-versioning/>):
 
 ```toml
 [build-system]
-requires = ["uv_build", "uv-dynamic-versioning"]
-build-backend = "uv_build"
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
 
 [project]
 dynamic = ["version"]
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"   # selects the plugin; without this hatchling still wants a static version
 
 [tool.uv-dynamic-versioning]
 vcs = "git"

@@ -53,17 +53,18 @@ everywhere; stated once here.
 
 ### 2. pytest config — one table, in pyproject.toml
 
-The portable location is `[tool.pytest.ini_options]`. A native `[tool.pytest]`
-TOML table (real arrays/booleans instead of INI-style strings) is claimed for
-pytest 9+, but that claim is single-sourced — verify it against the installed
-version and the changelog (https://docs.pytest.org/en/stable/changelog.html)
-before using it. On any pytest below 9, `[tool.pytest]` is ignored **silently**:
-no error, tests still run, strictness flags never apply. When in doubt,
-`ini_options` works on every supported pytest.
+Two tables exist, and the installed major decides: pytest >= 9.0 (Nov 2025) reads
+a native `[tool.pytest]` table (real TOML arrays/booleans); every supported
+pytest reads `[tool.pytest.ini_options]` (INI-style strings). Never write both.
+On pytest below 9, `[tool.pytest]` is ignored **silently**: no error, tests still
+run, strictness flags never apply — so check `uv run pytest --version` first
+(https://docs.pytest.org/en/stable/reference/customize.html). The block below
+uses `ini_options` because it works everywhere; on a >= 9 repo prefer the native
+table with the same keys.
 
 ```toml
 [tool.pytest.ini_options]
-minversion = "8.0"
+minversion = "8.0"          # raise to "9.1" if you rely on the strict flags below via addopts (see gotchas)
 testpaths = ["tests"]
 addopts = "-ra --strict-markers --strict-config"
 filterwarnings = ["error"]
@@ -82,8 +83,9 @@ filterwarnings = ["error"]
   in the explicit commands below and in CI. Trade-off: some teams keep it in
   `addopts` so coverage is never forgotten — if the user prefers that, keep it
   and note `--no-cov` disables it for one run.
-- **One config source.** pytest uses the first of `pytest.ini`,
-  `pyproject.toml`, `tox.ini`, `setup.cfg` and ignores the rest — a stray
+- **One config source.** pytest uses the first of `pytest.toml`/`.pytest.toml`,
+  `pytest.ini`/`.pytest.ini` (both win even when empty), `pyproject.toml`
+  (with either table), `tox.ini`, `setup.cfg` and ignores the rest — a stray
   `pytest.ini` silently shadows everything in pyproject. Merge, then delete.
 
 ### 3. Layout and discovery
@@ -132,9 +134,9 @@ exclude_lines = [
   pyproject — keep exactly one source.
 - Run with `uv run pytest --cov --cov-report=term-missing`.
 
-**Prove the gate.** pytest-cov has documented cases of returning exit code 0
-when an aggregate threshold is missed, and rounding can pass 66.6% against a 67
-bar. Never assume — demonstrate:
+**Prove the gate.** pytest-cov below 7.1 could return exit code 0 on a missed
+aggregate threshold depending on report options (fixed in 7.1.0, 2026-03), and
+rounding once passed 66.6% against a 67 bar. Never assume — demonstrate:
 
 ```bash
 uv run pytest --cov --cov-fail-under=100 -q; echo "exit=$?"
@@ -146,8 +148,10 @@ in two steps instead — `uv run pytest --cov` then
 exit code is reliable.
 
 - Parallel runs (`pytest -n auto` via pytest-xdist) require `parallel = true`
-  and `relative_files = true`, and subprocesses spawned by tests need
-  `COVERAGE_PROCESS_START` — otherwise coverage comes back empty or 0%.
+  and `relative_files = true`. Subprocesses spawned by tests need
+  `[tool.coverage.run] patch = ["subprocess"]` (coverage >= 7.10) — pytest-cov 7
+  dropped its own subprocess measurement — otherwise coverage comes back empty
+  or 0%.
 - A threshold is a floor, not a quality signal — it is trivially satisfied by
   tests without assertions. Steps 5–6 are the countermeasures. Patch/delta
   coverage on PRs is CI wiring (python-ci skill, if installed).
@@ -215,11 +219,13 @@ uv add --dev mutmut
 uv run mutmut run
 ```
 
-- Scope the first run to one core module (`[tool.mutmut]` `paths_to_mutate`),
+- Scope the first run to one core module (`[tool.mutmut]` `source_paths`; `do_not_mutate` for generated code),
   then triage survivors: a surviving mutant means a missing or weak assertion —
   or a genuinely equivalent mutant, which you mark and move on.
 - Do not gate CI on mutation score on day one; run it scoped or nightly and
-  treat the score as a diagnostic. Practitioners report 85–95% mutation scores
+  treat the score as a diagnostic — mutmut 3.7.0's own unreleased notes still list
+  coverage-excluded lines being mutated, false survivors and timeouts counted as
+  kills. Practitioners report 85–95% mutation scores
   as far more meaningful than the same number in line coverage.
 
 Triage workflow and the agent-era rationale:
@@ -237,7 +243,7 @@ Match the tool to the project — this debate is genuinely unsettled:
 | Already on tox | keep it; add tox-uv — speed-up, no config rewrite |
 
 ```bash
-for v in 3.10 3.11 3.12 3.13; do
+for v in 3.11 3.12 3.13 3.14; do   # the versions requires-python promises; 3.10 is EOL 2026-10
   uv run -p "$v" --with pytest --with pytest-cov pytest || exit 1
 done
 ```
@@ -281,10 +287,12 @@ Done means:
 
 | Symptom | Cause / fix |
 | --- | --- |
-| Coverage gate "passes" while below threshold | pytest-cov aggregate exit-code bug or rounding; prove the gate (step 4) or gate via standalone `coverage report --fail-under` |
-| Strictness flags mysteriously not applied | `[tool.pytest]` on pytest <9 (silently ignored), or a shadowing `pytest.ini` — one source, right table |
-| Coverage 0% or empty under `pytest -n auto` | missing `parallel`/`relative_files`; test-spawned subprocesses need `COVERAGE_PROCESS_START` |
+| Coverage gate "passes" while below threshold | pytest-cov < 7.1 aggregate exit-code bug or rounding; prove the gate (step 4) or gate via standalone `coverage report --fail-under` |
+| Strictness flags mysteriously not applied | `[tool.pytest]` on pytest <9 (silently ignored), a shadowing `pytest.toml`/`pytest.ini`, or pytest 9.0.x — a regression silently ignored `--strict-markers`/`--strict-config` inside `addopts` (fixed 9.1.0, 2026-06); on >= 9 prefer the `strict_markers`/`strict_config` ini keys |
+| Coverage 0% or empty under `pytest -n auto` | missing `parallel`/`relative_files`; test-spawned subprocesses need coverage's `patch = ["subprocess"]` (pytest-cov 7 no longer measures them) |
 | Coverage config edits change nothing | a `.coveragerc` wins over pyproject — delete one |
+| Gate script keys on a specific exit code | the tools disagree: coverage.py `fail_under` exits 2, pytest-cov exits 1, pytest exits 5 when no tests were collected — gate on non-zero |
+| `fail_under = 90` with `branch = true` "passes" at 85% branch coverage | the total combines statement and branch opportunities; it is not a branch-only minimum — read the branch column, or gate branches separately |
 | Matrix legs fail on version-specific code | `fail_under` enforced per leg; combine first, gate once |
 | Suite green right after an agent edited the tests | proves nothing — review test diffs before source diffs, run mutation testing; researchers have shown agents faking green via an injected `conftest.py`, so verify in an environment the agent cannot write to |
 | Generated tests pass but catch no regressions | mock-heavy tests, a documented agent bias (https://arxiv.org/abs/2602.00409) — require behavioral assertions on the public API, not mock call counts |

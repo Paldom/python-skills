@@ -43,8 +43,10 @@ Guardrails only work layered; each layer catches what the previous cannot
 Two consequences to state to the user every time: **anything that must always
 happen belongs in a hook, not prose** (rules files are wishes; hooks are
 contracts the harness executes), and **hooks are never the security
-boundary** — a determined agent can be dispatched around them (subagents,
-`bash` instead of Edit), so CI and server-side rules stay authoritative.
+boundary** — they are local and user-editable, and alternate tool paths
+(`bash` heredocs instead of Edit) route around file matchers, so CI and
+server-side rules stay authoritative. (Hooks from settings files *do* run
+inside subagents, with `agent_id` in the input — that gap is closed.)
 Hooks' one unique power: PreToolUse denial happens *before the file ever
 exists on disk* — the only layer that can do prevention rather than cleanup.
 
@@ -94,12 +96,17 @@ settings file only routes events; logic lives in versioned scripts.
 
 | Goal | Event + matcher | Script |
 | --- | --- | --- |
-| Block dangerous bash (`--no-verify`, force-push main, bare pip) | `PreToolUse` on `Bash` | `guard-bash.sh` |
-| Instant lint/format feedback on the file just edited | `PostToolUse` on `Edit\|Write` | `lint-edited-file.sh` |
-| Sign off only what the commit gate would accept | `Stop` | `stop-verify.sh` |
+| Block dangerous bash (`--no-verify`, `SKIP=`, hooksPath tricks, force-push main, bare pip, broad `rm -rf`) | `PreToolUse` on `Bash` | `guard_bash.py` |
+| Instant ruff feedback on the Python file just edited (report, never rewrite) | `PostToolUse` on `Edit\|Write\|NotebookEdit` | `lint_edited_file.py` |
+| Sign off only what the commit gate would accept | `Stop` | `stop_verify.py` |
+
+All three are stdlib Python (no `jq`): the bash guard lexes the command
+(wrappers, `bash -c`, newlines, `git -c`/`-C` options) instead of grepping it,
+so `git push origin HEAD:main --force`, `git -c core.hooksPath=/dev/null commit`
+and `python3.12 -m pip` are caught, and `git commit -uno` is not.
 
 **The parity rule.** The Stop gate never re-implements checks: when the repo
-has `.pre-commit-config.yaml`, `stop-verify.sh` runs **pre-commit itself**
+has `.pre-commit-config.yaml`, `stop_verify.py` runs **pre-commit itself**
 over the changed + untracked files — the identical gate `git commit` will run
 (`pre-commit run --files` checks the worktree as-is; no stashing). Auto-fixing
 hooks (prettier, ruff `--fix`, whitespace fixers) exit non-zero *after*
@@ -108,15 +115,23 @@ hand-rolled subset (`ruff check .` alone) drifts from the config and produces
 the classic failure: agent says done, the owner's commit fails on prettier.
 Repos without pre-commit keep the single fast `VERIFY_CMD` fallback.
 
-The exit-code contract — the part everyone gets wrong:
+The exit-code contract — the part everyone gets wrong (verified against
+https://code.claude.com/docs/en/hooks, 2026-09-10):
 
-- **`exit 0`** — proceed (stdout may carry JSON decisions).
-- **`exit 2`** — the ONLY blocking exit code. Reason goes to **stderr**
-  (stdout is discarded on exit 2). What "block" means is event-dependent:
+- **`exit 0`** — proceed. stdout may carry a JSON decision; on exit 0 plain
+  stderr goes only to the debug log, so a warning the user must see goes in
+  `{"systemMessage": "..."}` on stdout.
+- **`exit 2`** — the blocking exit code on blockable events, and nothing in
+  JSON can override it. The reason shown is the JSON decision's `reason` if
+  you printed one, otherwise **stderr** — so the simple recipe is still
+  "exit 2 + reason on stderr". What "block" means is event-dependent:
   PreToolUse prevents the call; PostToolUse cannot undo — stderr is feedback
-  only; Stop *prevents stopping* and forces the agent to keep working.
-- **`exit 1` (or any other code) — non-blocking.** Logged, ignored, the
-  action proceeds. This single fact breaks a large share of hook setups.
+  only (and it fires only on success; failed calls go to `PostToolUseFailure`);
+  Stop *prevents stopping* and forces the agent to keep working.
+- **`exit 1` (or any other code)** — non-blocking *unless* stdout holds valid
+  decision JSON, which is honored on every exit code. A bare `exit 1` with a
+  message is logged and ignored; this single fact breaks a large share of hook
+  setups.
 
 Rules for hooks that survive contact with a team:
 
@@ -130,10 +145,16 @@ Rules for hooks that survive contact with a team:
   and pre-build hook environments at setup (`uv run pre-commit install
   --install-hooks`): a hook that hits its timeout is **non-blocking**, so a
   cold first-run env build silently skips verification.
-- Matchers are case-sensitive exact names or regex: `bash` never matches
-  `Bash`; `Edit.*` also catches `NotebookEdit` — use `Edit|Write`.
-- `Edit|Write` misses shell-driven edits (`sed -i`, heredocs). Cover the gap
-  with the Stop-hook verification pass, which sees the whole worktree.
+- Matchers are case-sensitive: `bash` never matches `Bash`. Letters, digits,
+  `_`, `-`, spaces, commas and `|` are exact-match lists; any other character
+  makes it an unanchored regex (`Edit.*` also catches `NotebookEdit`).
+- `Edit|Write|NotebookEdit` misses shell-driven edits (`sed -i`, heredocs).
+  Cover the gap with the Stop-hook verification pass, which sees the whole
+  worktree; `FileChanged` exists for watching paths if you need per-file
+  reaction to shell writes.
+- `ConfigChange` (matcher `project_settings`) can block edits to
+  `.claude/settings.json` — the one hook that stops an agent from rewriting
+  its own guardrails mid-session.
 - Hard-deny (`exit 2`) only deterministic, unambiguous violations; prefer
   non-blocking feedback for style-level issues — an over-eager PreToolUse
   block can stall the agent entirely instead of guiding it.
@@ -177,9 +198,9 @@ A guardrail that has never fired is unverified. Test each one deliberately:
 ```bash
 # 1. Scripts standalone, with realistic stdin — check exit code + stderr
 echo '{"tool_input":{"command":"git commit --no-verify -m x"}}' \
-  | .claude/hooks/guard-bash.sh; echo "exit=$?"        # expect exit=2
+  | python3 .claude/hooks/guard_bash.py; echo "exit=$?"        # expect exit=2
 echo '{"tool_input":{"command":"git status"}}' \
-  | .claude/hooks/guard-bash.sh; echo "exit=$?"        # expect exit=0
+  | python3 .claude/hooks/guard_bash.py; echo "exit=$?"        # expect exit=0
 # 2. Audit passes
 python3 "${CLAUDE_SKILL_DIR}/scripts/check_guardrails.py" --root .
 ```
@@ -190,8 +211,7 @@ blocked call with the reason), edit a file with a deliberate lint error
 gate to push back). In a repo with pre-commit, also end a turn with an
 unformatted YAML/Markdown file in the tree — the Stop gate must run the
 commit gate and auto-fix or block, never sign it off. If a hook doesn't fire:
-matcher case, settings nesting, `jq` present on the machine, and script
-executable bit — in that order.
+matcher case, settings nesting, and that `python3` is on PATH — in that order.
 
 ## Output spec
 
@@ -213,15 +233,16 @@ Done means:
 | Symptom | Cause / fix |
 | --- | --- |
 | Hook "blocks" but the action proceeds | `exit 1` — only exit 2 blocks; everything else is logged and ignored |
-| Block reason never shown to the agent | reason printed to stdout — on exit 2 stdout is discarded; use stderr |
-| Hook never fires | case-sensitive matcher (`bash`≠`Bash`), wrong settings nesting, missing `jq`, unexpanded `$HOME`, or script not executable — all fail silently |
+| Block reason never shown to the agent | reason printed as plain text on stdout — on exit 2 the reason is the JSON `reason` field if any, else stderr; plain stdout text is neither |
+| Warning from an exit-0 hook never appears | stderr on exit 0 goes to the debug log only — print `{"systemMessage": "..."}` on stdout |
+| Hook never fires | case-sensitive matcher (`bash`≠`Bash`), wrong settings nesting, unexpanded `$HOME`, or a `python3` that is not on PATH — all fail silently |
 | Stop hook loops forever | missing `stop_hook_active` guard; harness caps at 8 blocks but fix the guard |
 | Agent "done" but the owner's `git commit` fails (prettier reformats, whitespace fixers fire) | Stop gate re-implements a subset instead of running the repo's pre-commit — wire stop-verify.sh's parity path (`pre-commit run --files` over the change set) |
 | First Stop in a fresh clone hangs or times out | cold hook-env build; pre-build at setup (`pre-commit install --install-hooks`) and keep the generous timeout — a timed-out hook is non-blocking, i.e. a silent pass |
 | Agent edits files but the format hook is silent | edit made via Bash (`sed -i`, `cat >`) — `Edit\|Write` never fires; rely on the Stop-hook worktree pass |
-| Formatter hook fights the agent | post-edit rewrite trips the agent's stale-file check on its next edit; format on save/commit instead, or accept the re-read cost |
+| Formatter hook fights the agent | an auto-fixing PostToolUse hook rewrites the file under the agent and its next edit fails the stale-file check — the shipped hook only reports; auto-fix belongs to pre-commit and the Stop gate's second pass |
 | PreToolUse exit-2 stalls the agent instead of correcting it | known behavior in some versions — keep hard denies rare and actionable; put style feedback in non-blocking channels |
-| Hooks treated as security | they are local and user-controlled; subagent dispatch and alternate tool paths route around them — CI + rulesets are the boundary |
+| Hooks treated as security | they are local and user-controlled; alternate tool paths (shell writes) route around file matchers — CI + rulesets are the boundary. Hooks do run inside subagents. |
 | Committed hook = code execution on every clone | `.claude/` changes are code: CODEOWNERS them, review in the web UI before checking out PR branches (real CVEs exist here) |
 | Plugin/skill turns out malicious | vet before install (step 5), pin versions, prefer official/curated sources |
 | Hook advice from tutorials doesn't match behavior | the event surface and blocking semantics drift across versions — trust https://code.claude.com/docs/en/hooks over any static list, including this skill's |
@@ -231,13 +252,16 @@ Done means:
 - `scripts/check_guardrails.py` — read-only audit of settings, hooks, matchers
   and rules files; non-zero exit on defects.
 - `assets/settings.json.template` — hook wiring for the three-script setup.
-- `assets/hooks/guard-bash.sh` — PreToolUse deny: `--no-verify`, `SKIP=` hook
-  skips, force-push to main, bare pip/python outside uv.
-- `assets/hooks/lint-edited-file.sh` — PostToolUse single-file ruff check+format.
-- `assets/hooks/stop-verify.sh` — Stop gate with the `stop_hook_active` guard:
-  runs the repo's pre-commit over changed + untracked files (twice, so
-  auto-fix hooks converge; `uv run` fallback for uv-managed installs), or one
-  marked `VERIFY_CMD` line in repos without pre-commit.
+- `assets/hooks/guard_bash.py` — PreToolUse deny (lexer-based, stdlib):
+  `--no-verify`/`-n`/abbreviations, `SKIP=` hook skips, `core.hooksPath`
+  redirects, force-push to main in any argument order, bare pip / `python -m
+  pip` outside uv, recursive force-delete of broad paths.
+- `assets/hooks/lint_edited_file.py` — PostToolUse single-file `ruff check` +
+  `format --check` via the project's own ruff (`uv run`); reports, never rewrites.
+- `assets/hooks/stop_verify.py` — Stop gate with the `stop_hook_active` guard,
+  runs in `$CLAUDE_PROJECT_DIR`: the repo's pre-commit over changed + untracked
+  files (twice, so auto-fix hooks converge; `uv run` fallback), or one
+  `VERIFY_CMD` list in repos without pre-commit; releases via `systemMessage`.
 - `assets/AGENTS.md.template` — starting rules file.
 - `references/hooks-reference.md` — full hook mechanics + known issues.
 - `references/layer-assignment.md` — which check runs at which layer.

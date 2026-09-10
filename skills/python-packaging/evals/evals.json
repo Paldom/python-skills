@@ -70,7 +70,7 @@
       "expected_behavior": [
         "checks the layout against what uv_build expects (src/<module>/__init__.py or flat <module>/, module named after the normalized project name)",
         "uses [tool.uv.build-backend] module-name or module-root when the import name differs from the project name",
-        "mentions that uv_build allows exactly one top-level module per wheel",
+        "mentions that uv_build discovers one module by default and needs module-name (a list for several modules) declared in [tool.uv.build-backend] otherwise",
         "re-runs uv build to confirm the fix"
       ]
     }

@@ -30,7 +30,7 @@
       "prompt": "Set up pre-commit for this Python project",
       "expected_behavior": [
         "checks the repo first (existing config, ruff/mypy versions in dev dependencies, whether GitHub workflows exist) and pins a rev for every hook repo it writes",
-        "includes hygiene hooks from pre-commit/pre-commit-hooks plus ruff-check with --fix and --exit-non-zero-on-fix ordered before ruff-format",
+        "includes hygiene hooks from pre-commit/pre-commit-hooks plus ruff-check --fix ordered before ruff-format",
         "runs pre-commit run --all-files after installing and gets the existing tree clean rather than leaving hooks that fail on untouched files",
         "states that hooks are bypassable with --no-verify and wires or recommends the CI mirror (pre-commit run --all-files in CI or pre-commit.ci)",
         "gives install commands that cover every stage used (default_install_hook_types or pre-commit install --hook-type)"
@@ -40,7 +40,7 @@
       "type": "quality",
       "prompt": "the ruff pre-commit hook auto-fixed my files but the commit went through anyway - I want it to block so the fix gets reviewed",
       "expected_behavior": [
-        "adds --exit-non-zero-on-fix to the ruff hook args so the hook fails whenever it applies a fix",
+        "explains that pre-commit itself fails a hook that modified files, so the auto-fix is never silently committed; --exit-non-zero-on-fix only matters when the same command runs outside pre-commit",
         "explains that fixes are left unstaged and the fail, re-add, re-commit loop is expected pre-commit behavior",
         "keeps the lint/fix hook ordered before ruff-format",
         "does not touch ruff rule selection in pyproject.toml"

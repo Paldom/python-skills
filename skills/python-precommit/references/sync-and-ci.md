@@ -55,10 +55,10 @@ jobs:
   pre-commit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4       # pin to full commit SHAs in production
-      - uses: actions/setup-python@v5   # (tags can be re-pointed; see section 5)
+      - uses: actions/checkout@v7       # pin to full commit SHAs in production
+      - uses: actions/setup-python@v7   # (tags can be re-pointed; see section 5)
         with: { python-version: "3.12" }
-      - run: python -m pip install pre-commit==4.3.0   # match the version in uv.lock
+      - run: python -m pip install pre-commit==4.6.2   # match the version in uv.lock
       - name: cache pre-commit environments
         uses: actions/cache@v4
         with:
@@ -121,7 +121,7 @@ dev-dependency versions move on. Options:
 
 | Mechanism | How | Notes |
 | --- | --- | --- |
-| Dependabot | `package-ecosystem: "pre-commit"` entry in `dependabot.yml` | Native support (added ~March 2026 — verify against current Dependabot docs); updates `rev:` fields preserving comments; supports grouped updates. Wiring Dependabot overall is the python-supply-chain skill's territory. |
+| Dependabot | `package-ecosystem: "pre-commit"` entry in `dependabot.yml` | Native support since 2026-03-10 (updates `rev`, honours `# frozen:` comments, groups; https://github.blog/changelog/2026-03-10-dependabot-now-supports-pre-commit-hooks/) |
 | pre-commit.ci | `autoupdate_schedule: weekly` | Hosted; also runs the hooks |
 | Manual cadence | `pre-commit autoupdate` monthly, in a PR | Review the diff — never blind-merge; a rev bump is a dependency bump |
 

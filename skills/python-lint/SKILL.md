@@ -23,7 +23,8 @@ format failures. Every command below runs in the user's package repository.
   runs) — the python-precommit skill. This skill only defines what Ruff should do.
 - **CI workflow YAML** (GitHub Actions jobs, matrices, caching) — the python-ci
   skill. This skill supplies the commands a CI job should run, not the workflow.
-- **Formatting YAML / JSON / TOML / Markdown prose** — Ruff formats Python only,
+- **Formatting YAML / JSON / TOML / Markdown prose** — Ruff formats Python
+  (including, since 0.16, Python code fences inside Markdown) and nothing else,
   by deliberate maintainer decision
   ([astral-sh/ruff#10738](https://github.com/astral-sh/ruff/issues/10738));
   the python-precommit skill covers non-Python files.
@@ -46,21 +47,26 @@ tuning an existing config (step 4), or fixing a red lint gate (step 6).
 ### 2. Install a pinned Ruff
 
 ```bash
-uv add --dev "ruff==0.15.6"        # example pin — check the latest release and pin that
+uv add --dev "ruff==0.16.6"        # example pin — check the latest release and pin that
 # one-off, no project change:
-uvx --from 'ruff==0.15.6' ruff check .
+uvx --from 'ruff==0.16.6' ruff check .
 ```
 
 No-uv fallback (once, applies to every command below): `python -m pip install
-'ruff==0.15.6'` and drop the `uv run` prefix.
+'ruff==0.16.6'` and drop the `uv run` prefix.
 
-Why pin — formatter output and the rule catalog change between minor releases
-(the 0.15 release shipped a "2026 style guide" that changed lambda and empty-line
-formatting; see [astral.sh/blog/ruff-v0.15.0](https://astral.sh/blog/ruff-v0.15.0)).
-An unpinned Ruff makes local, teammate, and CI runs disagree — the top reported
-lint-workflow failure. Optionally enforce the pin in config with
-`required-version = "0.15.6"` under `[tool.ruff]`. Note that `uv format`
-(uv 0.10.0+) runs Ruff's formatter under the hood — the same pinning logic applies.
+Why pin — formatter output and the rule catalog change between minor releases:
+0.15 shipped a "2026 style guide" that changed lambda and empty-line formatting
+([astral.sh/blog/ruff-v0.15.0](https://astral.sh/blog/ruff-v0.15.0)), and 0.16
+(2026-07-23) grew the **default** rule set from 59 to 413 rules while dropping 18
+`E`/`F` codes from it, so an unconfigured repo's findings changed overnight
+([astral.sh/blog/ruff-v0.16.0](https://astral.sh/blog/ruff-v0.16.0)). An unpinned
+Ruff makes local, teammate, and CI runs disagree — the top reported lint-workflow
+failure. Optionally enforce the pin in config with
+`required-version = "0.16.6"` under `[tool.ruff]`. Note that `uv format`
+(experimental since uv 0.8.13) runs a Ruff it bundles itself, so its version can
+differ from the project's pin — keep `ruff` in dev dependencies as the source of
+truth and treat `uv format` as a convenience wrapper.
 
 ### 3. Write the config (fresh setup)
 
@@ -100,9 +106,12 @@ docstring-code-format = true      # formats Python snippets inside docstrings
 
 Non-obvious decisions baked into this block:
 
-- **Ruff's out-of-the-box rule set is only `E` + `F`.** A team that "installed
-  Ruff" without `select` gets far less coverage than its old Flake8+plugins stack.
-  Always write an explicit `select`.
+- **Never rely on Ruff's default rule set.** Before 0.16 it was `E4`/`E7`/`E9`
+  + `F` (59 rules, less than a Flake8+plugins stack); since 0.16 it is 413 rules across
+  `B`, `UP`, `SIM`, `PL` and more, with 18 former `E`/`F` defaults removed — a repo
+  without `select` gets a different gate on every upgrade. `select` **replaces**
+  the default set, so an explicit list freezes it; `select = ["E4", "E7", "E9",
+  "F"]` reproduces the pre-0.16 baseline if a team wants exactly that.
 - **`ignore = ["E501"]` whenever the formatter is enabled** — `ruff format` already
   wraps at `line-length`; linting it too double-reports on lines the formatter
   cannot break (URLs, long strings).
@@ -214,10 +223,10 @@ Done means all of:
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| Ruff installed but misses obvious problems | Default rules are only `E`+`F` | Write an explicit `select` (step 3) |
+| Ruff installed but finds too little (pre-0.16) or floods CI after an upgrade (0.16+) | Running on the default rule set, which changed from `E`+`F` to 413 rules in 0.16 | Write an explicit `select` (step 3) — it replaces the defaults, so upgrades stop moving the gate |
 | E501 violations the formatter refuses to fix | Linter and formatter both own line length | `ignore = ["E501"]`; the formatter wraps what it can |
 | Routine Ruff upgrade suddenly fails checks | `select = ["ALL"]` auto-enables new rules | Explicit `select`; pin the Ruff version |
-| Formatter and linter fight (commas, quotes, string concat) | `COM812`, `ISC001`, `Q` rules conflict with `ruff format` | Drop them from `select`/add to `ignore` — see [conflicting rules](https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules) |
+| Formatter and linter fight (commas, quotes, indentation) | `COM812`/`COM819`, `Q000`–`Q004`, `D203`/`D206`/`D300`, `W191`, `E111`/`E114`/`E117` (and `ISC002` without `ISC001` + `allow-multiline = false`) conflict with `ruff format` | Drop them from `select`/add to `ignore` — see [conflicting rules](https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules) |
 | `--fix` deletes `# noqa: XY123` comments | `RUF100` treats unknown codes as unused suppressions | `external = ["XY"]` in `[tool.ruff.lint]` |
 | Autofix emits syntax that breaks the oldest supported Python | No `target-version` / `requires-python` → py310 assumed | Set `target-version` to the real minimum |
 | Excluded files still linted when paths are passed one-by-one | Explicit file args bypass `exclude` ([ruff#9585](https://github.com/astral-sh/ruff/issues/9585)) | Use per-file-ignores for must-hold rules; hook-layer wiring belongs to python-precommit |
@@ -225,7 +234,7 @@ Done means all of:
 | Files keep flip-flopping between formats | Black (or an IDE Black plugin) still active alongside Ruff | One formatter only — remove Black, update editor settings |
 | Old `.flake8` / `[tool.black]` settings "stopped working" | Ruff never reads them | Translate into `[tool.ruff]`, then delete the originals |
 | Passes locally, fails elsewhere | Version drift across dev/CI/hooks | Same pinned version everywhere; `required-version` makes mismatch a hard error |
-| Expected Ruff to format YAML/Markdown/TOML | Python-only by design; Markdown *code blocks* are preview-only (`--preview` + `extend-include`) | python-precommit skill covers non-Python formatting |
+| Expected Ruff to format YAML/Markdown/TOML | Python-only by design; since 0.16 Python *code fences* in Markdown are formatted by default (opt out with `fmt: off` comments or `extend-exclude`) | python-precommit skill covers non-Python formatting; scope Prettier/mdformat so they do not fight Ruff on fenced Python |
 | First CI run after adding Ruff fails hard | No local cleanup pass before wiring the gate | Run step 6 locally, commit, then gate |
 | `ruff check` green but diffs look unformatted | Lint and format are separate concerns — `check` doesn't verify formatting | Always run both gates (step 7) |
 

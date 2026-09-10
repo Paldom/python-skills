@@ -76,11 +76,13 @@ otherwise.
 Classic protection (idempotent PUT — note the API requires all four fields):
 
 ```bash
-gh api repos/{owner}/{repo}/branches/main/protection --method PUT \
-  --field required_status_checks='{"strict":true,"contexts":["all-checks-passed"]}' \
-  -F enforce_admins=true \
-  --field required_pull_request_reviews='{"required_approving_review_count":1,"dismiss_stale_reviews":true}' \
-  -F restrictions=null
+# --field sends strings; nested objects need a JSON body (--input).
+gh api repos/{owner}/{repo}/branches/main/protection --method PUT --input - <<'JSON'
+{ "required_status_checks": { "strict": true, "contexts": ["all-checks-passed"] },
+  "enforce_admins": true,
+  "required_pull_request_reviews": { "required_approving_review_count": 1, "dismiss_stale_reviews": true },
+  "restrictions": null }
+JSON
 ```
 
 Ruleset (branch, required check + PR review + no force push):

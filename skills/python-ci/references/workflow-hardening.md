@@ -30,13 +30,13 @@ Tags are mutable refs. `uses: some/action@v1` executes whatever `v1` points at
 # Bad — mutable, repointable
 - uses: astral-sh/setup-uv@v5
 # Good — immutable content address + human-readable audit comment
-- uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc  # v5.4.1 (example — resolve your own)
+- uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1 (resolved 2026-09-10 — re-resolve your own)
 ```
 
 Resolve tag → commit (annotated tags: pin the `^{}` dereferenced line):
 
 ```bash
-git ls-remote https://github.com/astral-sh/setup-uv 'refs/tags/v5*'
+git ls-remote https://github.com/astral-sh/setup-uv 'refs/tags/v10*'   # setup-uv has no floating v10 tag since 8.0.0 — full versions only
 ```
 
 Rules:
@@ -83,8 +83,8 @@ for template injection (untrusted `${{ }}` interpolation into `run:`), dangerous
 triggers, excessive permissions, impostor commits, and unpinned actions:
 
 ```bash
-uvx zizmor==1.9.0 .github/workflows/        # pin it; check the repo for the current release
-# no uv: python3 -m pip install zizmor==1.9.0 && zizmor .github/workflows/
+uvx zizmor==1.30.1 .github/workflows/        # pin it (>= 1.28.0: 1.27.0 printed the GitHub token under -v, GHSA-f42p-wjw5-97qh); check the repo for the current release
+# no uv: python3 -m pip install zizmor==1.30.1 && zizmor .github/workflows/
 ```
 
 Triage findings rather than blanket-silencing: template-injection findings in
@@ -134,11 +134,12 @@ combined with `pull_request_target`.
 - Keep cache keys content-addressed (lockfile hashes) with `restore-keys`
   prefixes; audit any workflow that combines `pull_request_target` with cache
   read/write.
-- GitHub has been rolling out read-only cache tokens for low-trust events and a
-  cache-isolation model (see
-  https://github.com/orgs/community/discussions/194493) — directionally good,
-  but design as if fork-writable caches are hostile regardless of platform
-  version.
+- Since 2026-06-26 GitHub issues a read-only cache token when the trigger is
+  untrusted (`pull_request_target`, `issue_comment`, fork `workflow_run`) and
+  the cache scope is the default branch
+  (https://github.blog/changelog/2026-06-26-read-only-actions-cache-for-untrusted-triggers/)
+  — directionally good, but design as if fork-writable caches are hostile
+  regardless of platform version.
 
 ## Agent-proofing the gate
 

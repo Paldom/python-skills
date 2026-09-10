@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.sh",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard_bash.py\"",
             "timeout": 10
           }
         ]
@@ -14,12 +14,12 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "Edit|Write|NotebookEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/lint-edited-file.sh",
-            "timeout": 15
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/lint_edited_file.py\"",
+            "timeout": 60
           }
         ]
       }
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-verify.sh",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop_verify.py\"",
             "timeout": 300
           }
         ]

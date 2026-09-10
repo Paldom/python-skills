@@ -28,7 +28,7 @@ secret. Swap the publish job's last step:
         with:
           name: dist
           path: dist/
-      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - run: uv publish
 ```
 
@@ -68,15 +68,15 @@ jobs:
     permissions:
       contents: write # push the bump commit + tag
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # PSR silently mis-computes the bump on shallow clones
           token: ${{ secrets.RELEASE_BOT_TOKEN }} # PAT/App token, NOT GITHUB_TOKEN
-      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - name: Semantic release
         env:
           GH_TOKEN: ${{ secrets.RELEASE_BOT_TOKEN }}
-        run: uvx --from python-semantic-release==10.6.0 semantic-release version
+        run: uvx --from python-semantic-release==10.6.2 semantic-release version
 ```
 
 Why the PAT/App token matters twice:
@@ -155,7 +155,7 @@ Rehearse the whole pipeline before the first real publish:
         with:
           name: dist
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
           skip-existing: true

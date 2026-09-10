@@ -72,7 +72,7 @@ jobs:
       fail-fast: false
       matrix:
         # QUOTED strings. Unquoted 3.10 is YAML for the float 3.1.
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.11', '3.12', '3.13', '3.14']   # = requires-python; 3.10 EOL 2026-10
     steps:
       - uses: actions/checkout@<pin-sha>  # vX.Y.Z
       - uses: astral-sh/setup-uv@<pin-sha>  # vX.Y.Z
@@ -80,13 +80,19 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
       - run: uv sync --locked --group dev
-      - run: uv run pytest --cov
-      # Coverage data per leg -> artifact. Name must include matrix values or
-      # legs overwrite each other. .coverage.* files are hidden -> include-hidden-files.
+      # pytest-cov manages coverage's `parallel` itself and writes ONE `.coverage`
+      # per leg, so give each leg its own file name or the download step's merge
+      # keeps only the last leg. `--cov-fail-under=0` disables the per-leg gate
+      # (pytest-cov otherwise applies the config's fail_under to this leg alone).
+      - run: uv run pytest --cov --cov-fail-under=0
+        env:
+          COVERAGE_FILE: .coverage.py${{ matrix.python-version }}
+      # Artifact name must include matrix values or legs overwrite each other.
+      # .coverage.* files are hidden -> include-hidden-files.
       - uses: actions/upload-artifact@<pin-sha>  # vX.Y.Z
         with:
           name: coverage-${{ matrix.python-version }}
-          path: .coverage*
+          path: .coverage.*
           include-hidden-files: true
           if-no-files-found: error
 
@@ -201,7 +207,13 @@ by consulting the filter output:
     if: always()
     steps:
       - run: |
-          if [[ "${{ needs.changes.outputs.code }}" != "true" ]]; then
+          # The filter job itself must have succeeded, and only an explicit
+          # "false" may skip the gate — an empty output (filter failed/skipped)
+          # is not "no changes".
+          if [[ "${{ needs.changes.result }}" != "success" ]]; then
+            echo "::error::Change detection did not succeed."; exit 1
+          fi
+          if [[ "${{ needs.changes.outputs.code }}" == "false" ]]; then
             echo "No relevant changes; passing."; exit 0
           fi
           if [[ "${{ needs.test.result }}" == "success" ]]; then

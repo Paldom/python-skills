@@ -95,6 +95,13 @@ def main() -> int:
 
     pyproject = root / "pyproject.toml"
     pytest_ini = root / "pytest.ini"
+    # pytest >= 9: pytest.toml / .pytest.toml outrank everything, even when empty;
+    # .pytest.ini is the hidden twin of pytest.ini.
+    toml_configs = [
+        p
+        for p in (root / "pytest.toml", root / ".pytest.toml", root / ".pytest.ini")
+        if p.is_file()
+    ]
     setup_cfg = root / "setup.cfg"
     tox_ini = root / "tox.ini"
     coveragerc = root / ".coveragerc"
@@ -138,6 +145,12 @@ def main() -> int:
             str(pytest_ini),
             "pytest.ini exists alongside pytest config in pyproject.toml — pytest.ini silently wins; merge into one source and delete the other",
         )
+    for cfg in toml_configs:
+        if pp_has_pytest or pytest_ini.is_file():
+            err(
+                str(cfg),
+                f"{cfg.name} exists alongside other pytest config — it takes precedence over every other file, even when empty; keep exactly one source",
+            )
     if setup_cfg_has_pytest and pp_has_pytest:
         warn(
             str(setup_cfg),
@@ -149,17 +162,28 @@ def main() -> int:
             "[pytest] section in tox.ini alongside pytest config in pyproject.toml — only one source is read; merge and delete the loser",
         )
 
-    # --- the pytest-9 native-table trap ---
-    if pp_has_native_pytest:
-        warn(
+    # --- the two pyproject tables ---
+    if pp_has_native_pytest and pp_has_ini_options:
+        err(
             str(pyproject),
-            "[tool.pytest] native table found — requires pytest >= 9 and is SILENTLY ignored on older pytest; run `pytest --version` and check the changelog, or use [tool.pytest.ini_options]",
+            "both [tool.pytest] and [tool.pytest.ini_options] present — pytest reads one table; merge into the one your pytest major supports",
+        )
+    elif pp_has_native_pytest:
+        info(
+            str(pyproject),
+            "[tool.pytest] native table (pytest >= 9.0) — SILENTLY ignored on older pytest; confirm with `pytest --version`, or use [tool.pytest.ini_options] if < 9 must work",
         )
 
-    if not (pp_has_pytest or pytest_ini.is_file() or setup_cfg_has_pytest or tox_ini_has_pytest):
+    if not (
+        pp_has_pytest
+        or pytest_ini.is_file()
+        or toml_configs
+        or setup_cfg_has_pytest
+        or tox_ini_has_pytest
+    ):
         warn(
             str(root),
-            "no pytest configuration found in pyproject.toml, pytest.ini, setup.cfg, or tox.ini — add [tool.pytest.ini_options] with testpaths and strict flags",
+            "no pytest configuration found in pyproject.toml, pytest.toml, pytest.ini, setup.cfg, or tox.ini — add [tool.pytest.ini_options] (or [tool.pytest] on pytest >= 9) with testpaths and strict flags",
         )
 
     # --- coverage config source conflicts (.coveragerc wins) ---

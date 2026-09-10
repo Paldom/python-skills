@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""PreToolUse hook (matcher: Bash): block quality-gate bypasses before they run.
+"""PreToolUse hook (matcher: Bash): enforce the owner-only git policy before it runs.
 
-Exit 2 blocks the tool call and feeds stderr back to Claude. Deny only
-deterministic, unambiguous violations; everything else passes through to the
-normal permission flow.
+AGENTS.md: never `git commit` or `git push` — every change stays in the working
+tree for the owner to review. A rule in prose is a wish; this hook is the contract.
+Exit 2 blocks the tool call and feeds stderr back to Claude. Deny only the
+deterministic, unambiguous case (a git commit/push in command position, also
+inside `bash -c '...'` and behind sudo/env/time wrappers); everything else passes
+through to the normal permission flow.
 
 Scope honesty: this guards the *agent's* Bash tool as a convenience. It is not a
-security boundary — humans and other processes are not covered, and server-side
-protection (a GitHub ruleset on main blocking force pushes) is the real gate.
+security boundary — humans and other processes are not covered, and the
+server-side `main` ruleset (force-push and required checks) is the real gate.
 """
 
 from __future__ import annotations
@@ -17,10 +20,12 @@ import re
 import shlex
 import sys
 
-MAIN_REF_RE = re.compile(r"(^|:)(refs/heads/)?(main|master)$")
+OWNER_ONLY = {"commit", "push"}
 OPERATORS = {";", "&&", "||", "|", "&", ";;"}
 GROUPING = {"(", ")", "{", "}", "((", "))"}
 WRAPPERS = {"sudo", "command", "nohup", "time", "env", "doas"}
+# Shell keywords that can stand in front of a command inside one segment.
+KEYWORDS = {"if", "then", "else", "elif", "do", "while", "until", "!", "{", "(", "exec"}
 WRAPPER_VALUE_FLAGS = {"-u", "-g", "--user", "--group"}
 GIT_VALUE_OPTS = {"-c", "-C", "--git-dir", "--work-tree", "--namespace", "--exec-path"}
 SHELLS = {"bash", "sh", "zsh", "dash", "ksh"}
@@ -51,6 +56,9 @@ def strip_wrappers(toks: list[str]) -> list[str]:
     while i < len(toks):
         t = toks[i]
         base = t.rsplit("/", 1)[-1]
+        if t in KEYWORDS:
+            i += 1
+            continue
         if base in WRAPPERS:
             i += 1
             # consume the wrapper's own flags (sudo -E, env -i, sudo -u user ...)
@@ -64,34 +72,15 @@ def strip_wrappers(toks: list[str]) -> list[str]:
     return toks[i:]
 
 
-def git_subcommand(toks: list[str]):
-    """Return (subcommand, args_after_subcommand) if this segment is a git call."""
+def git_subcommand(toks: list[str]) -> str | None:
+    """Return git's subcommand if this segment is a git call, else None."""
     toks = strip_wrappers(toks)
-    if not toks:
-        return None, []
-    if toks[0].rsplit("/", 1)[-1] != "git":
-        return None, []
+    if not toks or toks[0].rsplit("/", 1)[-1] != "git":
+        return None
     j = 1
     while j < len(toks) and toks[j].startswith("-"):
         j += 2 if toks[j] in GIT_VALUE_OPTS else 1
-    if j >= len(toks):
-        return None, []
-    return toks[j], toks[j + 1 :]
-
-
-def is_force_flag(t: str) -> bool:
-    if t == "--force":
-        return True
-    return bool(re.match(r"^-[a-zA-Z]+$", t)) and "f" in t
-
-
-def has_noverify(args: list[str]) -> bool:
-    for t in args:
-        if t == "--no-verify":
-            return True
-        if re.match(r"^-[a-zA-Z]+$", t) and "n" in t:
-            return True
-    return False
+    return toks[j] if j < len(toks) else None
 
 
 def check_segment(toks: list[str]) -> str | None:
@@ -106,42 +95,13 @@ def check_segment(toks: list[str]) -> str | None:
                     if verdict:
                         return verdict
                 break
-
-    sub, args = git_subcommand(toks)
-    if sub == "commit" and has_noverify(args):
+    sub = git_subcommand(toks)
+    if sub in OWNER_ONLY:
         return (
-            "Blocked: `git commit --no-verify` (or -n) bypasses this repo's quality "
-            "gates. Run `make check`, fix the failures, then commit normally."
+            f"Blocked: `git {sub}` is owner-only in this repo (AGENTS.md). Leave the "
+            "change in the working tree, run `make check`, and report what changed — "
+            "the owner reviews and commits."
         )
-    if sub == "push":
-        forced = any(
-            is_force_flag(t)
-            for t in args
-            if t.startswith("-")
-            and not t.startswith("--force-with-lease")
-            and not t.startswith("--force-if-includes")
-        )
-        positionals: list[str] = []
-        k = 0
-        while k < len(args):
-            t = args[k]
-            if t in ("-o", "--push-option", "--repo", "--receive-pack", "--exec"):
-                k += 2
-                continue
-            if t.startswith("-"):
-                k += 1
-                continue
-            positionals.append(t)
-            k += 1
-        refspecs = positionals[1:]  # positionals[0] is the remote
-        plus_main = any(r.startswith("+") and MAIN_REF_RE.search(r[1:]) for r in refspecs)
-        target_main = any(MAIN_REF_RE.search(r.lstrip("+")) for r in refspecs)
-        if plus_main or (forced and (target_main or not refspecs)):
-            return (
-                "Blocked: force-pushing main/master (or a force push with no explicit "
-                "branch) rewrites shared history. Push a feature branch, or use "
-                "--force-with-lease on a branch you own."
-            )
     return None
 
 
@@ -153,11 +113,14 @@ def main() -> int:
     command = (payload.get("tool_input") or {}).get("command") or ""
     if not command:
         return 0
-    for seg in segments(lex(command)):
-        verdict = check_segment(seg)
-        if verdict:
-            sys.stderr.write(verdict + "\n")
-            return 2
+    # A newline separates commands exactly like `;` — lex line by line so a
+    # multi-line script cannot hide `git push` behind an innocent first line.
+    for line in command.splitlines():
+        for seg in segments(lex(line)):
+            verdict = check_segment(seg)
+            if verdict:
+                sys.stderr.write(verdict + "\n")
+                return 2
     return 0
 
 

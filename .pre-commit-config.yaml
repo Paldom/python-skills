@@ -27,9 +27,10 @@ repos:
       - id: detect-private-key   # a key committed here ships to every installer
 
   # Python lint + format. Order matters: fixer first, formatter second.
-  # --exit-non-zero-on-fix is load-bearing: without it ruff fixes the file, the
-  # hook passes, and the commit ships the *unfixed* content because the fix was
-  # never staged. Expect the fail -> `git add` -> recommit loop; that is correct.
+  # pre-commit fails any hook that modified files ("files were modified by this
+  # hook"), so an auto-fix never lands unstaged; expect the fail -> `git add` ->
+  # recommit loop. --exit-non-zero-on-fix is belt-and-braces for the same command
+  # run outside pre-commit (e.g. a Makefile), where a fixed file exits 0.
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.10
     hooks:

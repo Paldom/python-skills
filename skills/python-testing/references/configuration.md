@@ -16,42 +16,38 @@ Both tools read exactly one config source and silently ignore the rest. Most
 **pytest** stops at the first file that qualifies as a config file, in this
 order (see https://docs.pytest.org/en/stable/reference/customize.html):
 
-1. `pytest.ini` (wins even if empty)
-2. `pyproject.toml` (only counts if it contains a `[tool.pytest.ini_options]` table)
-3. `tox.ini` (only with a `[pytest]` section)
-4. `setup.cfg` (only with a `[tool:pytest]` section)
+1. `pytest.toml` / `.pytest.toml` (win even if empty; pytest >= 9)
+2. `pytest.ini` / `.pytest.ini` (win even if empty)
+3. `pyproject.toml` (only counts with a `[tool.pytest]` or `[tool.pytest.ini_options]` table)
+4. `tox.ini` (only with a `[pytest]` section)
+5. `setup.cfg` (only with a `[tool:pytest]` section)
 
 **coverage.py** reads the first of (see
 https://coverage.readthedocs.io/en/latest/config.html):
 
 1. `.coveragerc` (wins even when pyproject has `[tool.coverage.*]`)
-2. `setup.cfg` / `tox.ini` (`[coverage:...]` sections)
-3. `pyproject.toml` (`[tool.coverage.*]`)
+2. `.coveragerc.toml`
+3. `setup.cfg` / `tox.ini` (`[coverage:...]` sections)
+4. `pyproject.toml` (`[tool.coverage.*]`)
 
 Rule: one source per tool, preferably `pyproject.toml` for both, and delete the
 losers after merging. The bundled `scripts/check_test_config.py` flags these
 conflicts.
 
-## The pytest 9 table question
+## The two pyproject tables
 
-A native `[tool.pytest]` TOML table — real TOML arrays and booleans for
-`addopts`/`testpaths` instead of the INI-string bridge that
-`[tool.pytest.ini_options]` provides — has been claimed for pytest 9.0+. In the
-research behind this skill that claim was **single-sourced**; do not take it
-(or this file) as authority. Decide by evidence:
+pytest 9.0 (2025-11-05) added a native `[tool.pytest]` table — real TOML arrays
+and booleans for `addopts`/`testpaths` instead of the INI-string bridge that
+`[tool.pytest.ini_options]` (pytest >= 6) provides. Rules, from
+https://docs.pytest.org/en/stable/reference/customize.html:
 
-```bash
-uv run pytest --version
-```
-
-- Then check the changelog for the installed major version:
-  https://docs.pytest.org/en/stable/changelog.html
-- If the installed pytest is < 9, or the changelog does not confirm the table,
-  use `[tool.pytest.ini_options]`. It works on every supported pytest.
-- The failure mode is silent: an unrecognized `[tool.pytest]` table produces no
-  error. Tests run with default (lenient) settings and every strictness flag
-  you thought you set is off. `--strict-config` cannot save you here because it
-  is itself inside the ignored table.
+- Use one table, never both; pick by `uv run pytest --version`.
+- On pytest < 9 an unrecognized `[tool.pytest]` table produces no error. Tests
+  run with default (lenient) settings and every strictness flag you thought you
+  set is off — `--strict-config` cannot save you because it is itself inside the
+  ignored table. `ini_options` works on every supported pytest.
+- Keys are the same in both tables; only the value types differ
+  (`addopts = ["-ra", "--strict-markers"]` vs `addopts = "-ra --strict-markers"`).
 
 Also relevant when upgrading: pytest 9.x tightened config and deprecation
 handling (warnings that used to pass now error), so a major-version bump can
@@ -152,9 +148,10 @@ Notes:
 ## Proving the gate
 
 pytest-cov has a documented failure mode where `--cov-fail-under` does not
-produce a non-zero exit code for aggregate/multi-directory configurations, and
-internal rounding can pass e.g. 66.66% against a 67 requirement
-(https://stackoverflow.com/questions/79815717/why-doesnt-pytest-cov-fail-with-a-non-zero-exit-code-when-code-coverage-thresho).
+produce a non-zero exit code for aggregate/multi-directory configurations
+depending on report options, and internal rounding could pass e.g. 66.66% against a
+67 requirement. pytest-cov 7.1.0 (2026-03-21) made the total consistent regardless
+of reporting settings — still demonstrate the gate once per repo.
 A gate that has never been seen to fail must be treated as not wired up.
 
 Demonstration procedure (also the acceptance test after any config change):
@@ -186,8 +183,9 @@ its own data file. Requirements for coverage to survive this:
 - `relative_files = true` — paths recorded relative to the repo root so data
   from different working directories/runners lines up.
 - Subprocesses spawned *by tests* (`subprocess`, `multiprocessing`) are not
-  measured unless `COVERAGE_PROCESS_START` points at the config file — see
-  https://coverage.readthedocs.io/en/latest/subprocess.html.
+  measured unless coverage is told to patch them: `[tool.coverage.run]
+  patch = ["subprocess"]` (coverage >= 7.10; pytest-cov 7.0 dropped its own
+  subprocess support) — see https://coverage.readthedocs.io/en/latest/subprocess.html.
 
 Symptom of getting this wrong: coverage reports 0% or "no data collected"
 under `-n auto` while a serial run looks fine.

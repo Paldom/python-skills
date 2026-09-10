@@ -11,7 +11,8 @@ Checks
     E002  remote repo has no rev, or rev is a mutable ref (main/master/HEAD/...)
     E003  'typescript' used as a file type (identify's identifier is 'ts')
   warnings (exit 0, or 1 with --strict):
-    W101  ruff hook has --fix without --exit-non-zero-on-fix (silent-fix commits)
+    N202  ruff --fix without --exit-non-zero-on-fix (harmless under pre-commit, which fails
+          modifying hooks itself; the flag matters only when the command also runs outside)
     W102  ruff-format ordered before the ruff lint hook (reformat churn)
     W103  mirrors-mypy hook without additional_dependencies (isolated env
           lacks project deps; false import errors or silently missing stubs)
@@ -230,11 +231,12 @@ def main() -> int:
                 lint_seen_at = idx
                 hook_args = hook.list_of("args")
                 if "--fix" in hook_args and "--exit-non-zero-on-fix" not in hook_args:
-                    warnings.append(
-                        f"{path}:{hook.line}: W101 ruff hook has --fix without "
-                        "--exit-non-zero-on-fix — it will auto-fix, leave the fix "
-                        "unstaged, and let the commit through with unfixed content"
+                    notes.append(
+                        f"{path}:{hook.line}: N202 ruff --fix without --exit-non-zero-on-fix — "
+                        "harmless here (pre-commit fails any hook that modifies files); add the "
+                        "flag only if the same command also runs outside pre-commit"
                     )
+
             if (
                 hid == "ruff-format"
                 and lint_seen_at is None

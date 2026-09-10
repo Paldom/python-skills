@@ -112,14 +112,15 @@ workflow run:
    → "Add a new pending publisher". Existing project: project page → Settings →
    Publishing.
 2. Fill the four fields — validation is an **exact, case-sensitive match**:
-   - Owner (GitHub org/user) and repository name, exact casing.
+   - Owner (GitHub org/user) and repository name, exactly as GitHub reports them.
    - Workflow filename — the bare filename with extension, e.g. `publish.yml`
      (not a path, not `publish.yaml` if the file is `.yml`).
    - Environment name: `pypi` (recommended; must then match `environment:` in
      the job).
 3. In the repo: Settings → Environments → `pypi` → add required reviewers.
    This is the human release gate — the publish job pauses for approval.
-   (Environment protection rules require a public repo or a paid plan.)
+   (Required reviewers on environments: public repos on any plan; private repos
+   only on GitHub Enterprise.)
 4. After the first successful OIDC publish, revoke any leftover project-scoped
    API tokens — a compromised account can otherwise mint a token and publish
    around the OIDC flow entirely.
@@ -150,8 +151,8 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - run: uv sync --locked # fails loudly if uv.lock desynced from pyproject.toml
       - run: uv run pytest
 
@@ -161,10 +162,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - run: uv build
-      - run: uvx --from twine==6.2.0 twine check --strict dist/*
+      - run: uvx --from twine==7.0.0 twine check --strict dist/*
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dist
@@ -172,7 +173,7 @@ jobs:
 
   publish:
     needs: build
-    runs-on: ubuntu-latest # GitHub-hosted only; OIDC fails on self-hosted runners
+    runs-on: ubuntu-latest # GitHub-hosted: self-hosted is untested/unsupported by the PyPA action
     environment: pypi # the gated environment — must match the PyPI publisher entry
     permissions:
       id-token: write # the only write permission publishing needs
@@ -181,7 +182,7 @@ jobs:
         with:
           name: dist
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           skip-existing: true # re-runs after partial failure become idempotent
 ```
@@ -189,8 +190,9 @@ jobs:
 Notes on this shape:
 
 - `pypa/gh-action-pypi-publish` generates **PEP 740 attestations** automatically
-  under trusted publishing — no extra flags. (`uv publish` also auto-detects the
-  OIDC token if you prefer one tool; see the reference for that variant.)
+  under trusted publishing — no extra flags. `uv publish` also auto-detects the
+  OIDC token but does **not** generate attestations (it only uploads ones you
+  created separately) — if provenance matters, use the PyPA action.
 - Every action is pinned to a full commit SHA with the tag in a comment.
   Mutable tags get hijacked (tj-actions, March 2025) — and the publish workflow
   is the highest-value target in the repo. Refresh a pin with:
@@ -258,11 +260,21 @@ trusted-publisher entry) before production — recipe in
 ## Failure modes & gotchas
 
 - **`uv.lock` desync (the #1 automated-release breaker).** A bump tool rewrites
-  `project.version`; `uv.lock` still records the old version; the next
-  `uv sync`/`uv run`/`uv build` fails its freshness check. Fix: run
+  `project.version`; `uv.lock` still records the old version. Plain `uv sync`/
+  `uv run` then *silently rewrite* the lockfile (so the committed one stays
+  stale), and CI's `uv sync --locked` fails its freshness check. Fix: run
   `uv lock --upgrade-package <name>` between bump and build and **commit the
-  lockfile with the bump commit** — regenerating it ephemerally in the runner
-  leaves every clone broken. For PSR, put it in `build_command`.
+  lockfile with the bump commit** — regenerating it in the runner leaves every
+  clone with a stale lock. For PSR, put it in `build_command`.
+- **"Release no longer accepts new files."** Since 2026-07-22 PyPI rejects new
+  files on a release older than 14 days — a wheel for a new Python version cannot
+  be added to last month's release; cut a post-release (`1.2.3.post1`) or a patch
+  version instead, and build the full wheel matrix in one publish run.
+- **Upload rejected with an unsupported metadata version.** Hatchling 1.32.0
+  (2026-08-11) emits Core Metadata 2.5 by default; `twine < 7.0.0` and
+  `pypa/gh-action-pypi-publish < 1.14.2` cannot upload it (1.30.0 was yanked for
+  exactly this). Pin twine >= 7.0.0 (which also drops the never-standardized
+  metadata 2.0) and the publish action >= v1.14.2 whenever the backend is current.
 - **`invalid-publisher` / "unable to authenticate" despite correct-looking
   config.** One field differs from reality: owner/repo casing, workflow
   filename (including `.yml` vs `.yaml`), or environment name — or the publish

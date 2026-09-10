@@ -46,7 +46,7 @@
         "identifies the exit-code contract as the cause: only exit 2 blocks; exit 1 and any other non-zero are logged as non-blocking and the action proceeds",
         "also checks the matcher for case-sensitivity mistakes (e.g. 'bash' never matches Bash) and the settings.json nesting",
         "has the user test the hook script standalone in a shell with sample stdin JSON to verify exit code and stderr output",
-        "warns that the block reason must go to stderr because stdout is discarded on exit 2"
+        "puts the block reason on stderr (or in a JSON decision reason) and notes that plain stdout text is not shown; stdout JSON is still read on exit 2"
       ]
     },
     {

@@ -7,12 +7,12 @@
           {
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/validate_skill_file.py\"",
-            "timeout": 30
+            "timeout": 45
           },
           {
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/lint_python_file.py\"",
-            "timeout": 60
+            "timeout": 75
           }
         ]
       }
@@ -25,6 +25,17 @@
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard_bash.py\"",
             "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/verify_stop.py\"",
+            "timeout": 240
           }
         ]
       }

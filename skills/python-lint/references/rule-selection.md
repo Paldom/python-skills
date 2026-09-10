@@ -9,8 +9,13 @@
 
 ## How selection works
 
-- Ruff enables **only `E` (pycodestyle errors) and `F` (pyflakes)** by default.
-  Everything else is opt-in via `[tool.ruff.lint] select`.
+- Ruff's default set changed in 0.16 (2026-07-23): from **only `E` and `F`** (59
+  rules) to **413 rules** spanning `B`, `UP`, `SIM`, `PL` and more, with 18 former
+  `E`/`F` defaults (E401, E402, E501-adjacent E7xx style codes, F403, F405, …)
+  removed — see https://docs.astral.sh/ruff/default-rules/. (Even before 0.16
+  the default was `E4`/`E7`/`E9` + `F`, never all of `E`.) The lesson is
+  unchanged: write `[tool.ruff.lint] select` explicitly so the enabled set is
+  yours, not the release's.
 - `select` **replaces** the default set; `extend-select` **adds to** whatever the
   current basis is. Trade-off, both positions defensible:
   - `select` (Astral's documented lean, [docs.astral.sh/ruff/linter/](https://docs.astral.sh/ruff/linter/)) —
@@ -53,7 +58,7 @@
 | `D` | pydocstyle | docstring conventions (**partial parity** — some checks missing) |
 | `PL` (`PLC/PLE/PLR/PLW`) | Pylint (subset) | refactoring, magic values (`PLR2004`) |
 | `C90` | mccabe | cyclomatic complexity |
-| `ISC` | flake8-implicit-str-concat | implicit concatenation (`ISC001` conflicts with formatter) |
+| `ISC` | flake8-implicit-str-concat | implicit concatenation (formatter-safe; `ISC002` conflicts only without `ISC001`) |
 | `ICN` | flake8-import-conventions | `import numpy as np`-style aliases |
 | `ANN` | flake8-annotations | annotation *presence/style* — NOT type checking |
 | `LOG`, `G` | flake8-logging(-format) | logging misuse |
@@ -80,7 +85,7 @@ Rules of thumb:
 
 - Enable `S` (security) only with the `tests/` per-file-ignore in place, or the
   suite drowns in `S101` (assert).
-- Skip `Q`, `COM`, `ISC001` when using `ruff format` (see
+- Skip `Q`, `COM` (and `D203`/`D206`/`D300`, `W191`/`E11x`) when using `ruff format` (see
   [formatter-conflicting rules](#formatter-conflicting-rules)).
 - `ANN` is high-noise; if the package uses a real type checker, that layer
   already enforces annotations where they matter.
@@ -154,10 +159,13 @@ When `ruff format` is in use, these lint rules fight it — leave them out of
 
 - `E501` (line length — the formatter owns it; `ignore = ["E501"]`)
 - `COM812` / `COM819` (trailing commas)
-- `ISC001` / `ISC002` (implicit string concatenation)
-- `Q000`–`Q003` (quote style — set `[tool.ruff.format] quote-style` instead)
-- `W191`, `E111`, `E114`, `E117`, `D206`, `D300` (indentation/docstring
+- `ISC002` — only when `ISC001` is *not* selected and `allow-multiline = false`
+  (`ISC001` itself is fine with the formatter)
+- `Q000`–`Q004` (quote style — set `[tool.ruff.format] quote-style` instead)
+- `W191`, `E111`, `E114`, `E117`, `D203`, `D206`, `D300` (indentation/docstring
   mechanics the formatter normalizes)
+
+Current list: https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules.
 
 Authoritative list: [docs.astral.sh/ruff/formatter/#conflicting-lint-rules](https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules).
 

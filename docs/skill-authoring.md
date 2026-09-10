@@ -34,9 +34,13 @@ Only `name` and `description` are required. Rules the validator enforces:
 Useful optional fields: `argument-hint` (slash-command placeholder),
 `disable-model-invocation: true` (side-effect skills: deploy, release — slash-only),
 `user-invocable: false` (background knowledge, hidden from the `/` menu),
-`allowed-tools` (least privilege; treat as best-effort, not a security boundary),
-`context: fork` + `agent` (run isolated in a subagent), `model` / `effort` (route
-mechanical skills cheaper). Keep frontmatter under ~20 lines; nest extras under
+`allowed-tools` / `disallowed-tools` (least privilege; best-effort, not a security
+boundary), `context: fork` + `agent` (+ `background: false` to wait for the result;
+forked skills run in the background by default since 2.1.218), `model` / `effort`
+(route mechanical skills cheaper), `hooks` (registered on invocation and kept for
+the rest of the session). The portable spec is only `name`, `description`,
+`license`, `compatibility`, `metadata`, `allowed-tools` — everything else is
+Claude Code-specific and ignored elsewhere. Keep frontmatter under ~20 lines; nest extras under
 `metadata:`. Reference bundled scripts/files via `${CLAUDE_SKILL_DIR}` (e.g.
 `python3 "${CLAUDE_SKILL_DIR}/scripts/check.py"`) so paths resolve regardless of
 the working directory or install location; `${CLAUDE_PROJECT_DIR}` for repo files.
@@ -74,7 +78,8 @@ description: Generates unit and integration tests for the current file. Use when
 Rules of thumb (community-measured, directional):
 
 - **150–400 chars** is the sweet spot; front-load trigger keywords in the first
-  ~120 chars (long descriptions can be truncated in the router).
+  ~120 chars — Claude Code truncates the combined `description` + `when_to_use`
+  listing text at 1,536 characters (code.claude.com/docs/en/skills).
 - 3–5 intent-verb synonyms (write/draft/create/generate) and the concrete **output
   type** — the single highest-leverage word against false positives.
 - Quote terse real phrasings users actually type: "fix the build", "tests failing".

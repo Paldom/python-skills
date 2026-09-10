@@ -16,7 +16,7 @@
 | Lint speed or config sprawl is real friction | Migrate; the mapping below is mechanical |
 | Business-critical custom Flake8 plugin, no Ruff equivalent | Hybrid: Ruff for everything else, Flake8 scoped to that plugin |
 | Huge legacy codebase, blame matters | Incremental: `--add-noqa` or changed-lines-only formatting (below) |
-| Team standardizes on uv | `uv format` (uv 0.10.0+) already runs Ruff's formatter |
+| Team standardizes on uv | `uv format` (experimental since uv 0.8.13) runs a bundled Ruff — keep the project's own `ruff` pin as the source of truth |
 
 ## Migration sequence
 

@@ -59,7 +59,7 @@ verified step.
 
 ```toml
 [build-system]
-requires = ["uv_build>=0.11,<0.12"]
+requires = ["uv_build>=0.12,<0.13"]
 build-backend = "uv_build"
 ```
 
@@ -133,7 +133,7 @@ leaks your toolchain into downstream resolvers. Optional *runtime* features
 ### 5. Manage the project with uv
 
 ```bash
-uv init --lib my-package            # new projects only
+uv init --lib my-package            # new projects only (uv >= 0.12 also declares a build system for plain `uv init`; `--no-package` opts out)
 uv add httpx                        # runtime dep -> [project.dependencies] + uv.lock
 uv add --dev pytest                 # dev dep -> [dependency-groups].dev
 uv sync                             # build .venv from uv.lock (--no-dev in production)
@@ -148,10 +148,14 @@ uv project — it mutates `.venv` behind the lockfile's back.
 
 Migrations:
 
-- **From setup.py/setup.cfg** — move metadata into `[project]`, set
-  `[build-system]`, delete `setup.py`, `setup.cfg`, and `MANIFEST.in`, then run
-  steps 6–8. Exception: setuptools with C extensions still needs a `setup.py`
-  for `ext_modules` — keep only that part.
+- **From setup.py/setup.cfg** — inventory every section first: `[options]`
+  metadata goes to `[project]`, `package_data`/`MANIFEST.in` directives become
+  the backend's file-inclusion config, and tool sections (`[tool:pytest]`,
+  `[flake8]`, `[mypy]`) move to `pyproject.toml` or their owning skill. Build
+  once with the old config, once with the new, diff the wheel/sdist listings,
+  and only then delete `setup.py`, `setup.cfg`, and `MANIFEST.in` (steps 6–8
+  verify the result). Exception: setuptools with C extensions still needs a
+  `setup.py` for `ext_modules` — keep only that part.
 - **From Poetry** — run `uvx 'migrate-to-uv==0.12.0'` (pin the version: unpinned
   `uvx` executes whatever was published to PyPI most recently, which is both
   irreproducible and a supply-chain hole; bump pins deliberately). It maps
@@ -166,7 +170,7 @@ Migrations:
 ### 6. Validate the metadata
 
 ```bash
-uvx --from 'validate-pyproject[all]==0.25' validate-pyproject pyproject.toml
+uvx --from 'validate-pyproject[all]==0.26' validate-pyproject pyproject.toml
 ```
 
 A `pyproject.toml` that parses as valid TOML can still violate the packaging
@@ -182,8 +186,8 @@ uv build        # sdist (.tar.gz) + wheel (.whl) into dist/
 
 To debug `uv_build` under any frontend, set `RUST_LOG=uv=debug`. No-uv fallback
 (once, for environments where uv is unavailable): `python -m pip install
-build==1.5.0 && python -m build` produces the same artifacts, and
-`pip install -e '.[dev]'` replaces `uv sync` for dev installs — at the cost of
+build==1.6.0 && python -m build` produces the same artifacts, and
+`pip install -e . --group dev` (pip >= 25.1; groups are not extras) replaces `uv sync` for dev installs — at the cost of
 lockfile reproducibility.
 
 ### 8. Verify the artifacts — never skip
@@ -228,10 +232,12 @@ uv run --isolated --no-project --with dist/my_package-0.1.0-py3-none-any.whl \
   module root. Consumers of a wheel without the marker silently get `Any` for
   your whole API — verify the artifact, not the source tree. Per-backend
   snippets in [references/build-backends.md](references/build-backends.md).
-- **uv_build "module not found" / metadata validation failure.** It wants exactly
-  one top-level module, named after the normalized project name, at
-  `src/<module>/` or `./<module>/`. Fix with `[tool.uv.build-backend]`
-  `module-name`/`module-root`; multi-top-level wheels need setuptools/hatchling.
+- **uv_build "module not found" / metadata validation failure.** By default it
+  expects one module named after the normalized project name at `src/<module>/`
+  or `./<module>/`. Declare a different name, several modules, or a namespace
+  package with `[tool.uv.build-backend]` `module-name = [...]` / `module-root` /
+  `namespace` (an explicit list is recommended over `namespace = true`, which
+  disables the safety checks).
 - **Build breaks after a uv release.** Unbounded `requires = ["uv_build"]` —
   restore the `>=X,<X+1` bound (step 2).
 - **Half-finished Poetry migration.** `[build-system]` flipped while the real

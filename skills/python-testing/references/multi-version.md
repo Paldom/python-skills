@@ -23,7 +23,7 @@ fashion.
 | Many *dependency* versions (not Python versions) | CI-side dynamic matrix | see "Where CI takes over" below |
 
 Interpreter availability is what used to make tox/nox painful: each Python in
-the envlist had to pre-exist on the machine. `uv python install 3.10 3.11 3.12 3.13`
+the envlist had to pre-exist on the machine. `uv python install 3.11 3.12 3.13 3.14`
 (or uv's on-demand download inside `uv run -p`) removes that class of failure
 entirely.
 
@@ -33,7 +33,7 @@ For a package with straightforward dependencies, a loop replaces the whole
 runner layer:
 
 ```bash
-for v in 3.10 3.11 3.12 3.13; do
+for v in 3.11 3.12 3.13 3.14; do
   uv run -p "$v" --with pytest --with pytest-cov pytest || exit 1
 done
 ```
@@ -82,7 +82,7 @@ import nox
 
 nox.options.default_venv_backend = "uv"
 
-@nox.session(python=["3.10", "3.11", "3.12", "3.13"])
+@nox.session(python=["3.11", "3.12", "3.13", "3.14"])
 def tests(session):
     session.install(".", "pytest", "pytest-cov")
     session.run("pytest", *session.posargs)

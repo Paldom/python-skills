@@ -48,7 +48,7 @@ numbers are single-source and partly refuted. Decision rules that hold up:
 
 | Situation | Pick |
 | --- | --- |
-| Django / SQLAlchemy / Pydantic-heavy stack (plugin-dependent) | mypy + the framework's plugin |
+| Django (django-stubs) or Pydantic plugin-dependent stack | mypy + the framework's plugin (SQLAlchemy 2.x is natively typed — its mypy plugin is deprecated and stopped at mypy 1.10) |
 | New project, no plugin needs, VS Code team | pyright (`standard`, then `strict`) |
 | Non-VS-Code editors (Neovim, Helix, Cursor) or stricter defaults wanted | basedpyright |
 | uv/Ruff shop that tolerates beta churn | pilot ty locally; keep mypy or pyright as the CI gate |
@@ -66,13 +66,13 @@ unpinned checker breaks CI on unrelated PRs. Substitute the current release
 from PyPI for the pins shown:
 
 ```bash
-uv add --dev "mypy==1.14.0"        # or: "pyright==1.1.392" (PyPI wrapper, bundles node)
+uv add --dev "mypy==2.3.1"         # or: "pyright==1.1.413" (PyPI wrapper, bundles node)
 uv run mypy src tests               # or: uv run pyright
 ```
 
-Without uv (once, for reference): `python -m pip install "mypy==1.14.0"` then
+Without uv (once, for reference): `python -m pip install "mypy==2.3.1"` then
 `python -m mypy src tests`. For a ty pilot without touching deps:
-`uvx --from "ty==0.0.1a8" ty check src` (again, substitute the current pin).
+`uvx --from "ty==0.0.80" ty check src` (again, substitute the current pin; ty is still pre-1.0).
 
 ### 4. Configure in pyproject.toml
 
@@ -97,7 +97,7 @@ pyright / basedpyright (use `[tool.basedpyright]` for the fork):
 ```toml
 [tool.pyright]
 include = ["src", "tests"]
-exclude = ["**/__pycache__", ".venv"]  # custom exclude REPLACES defaults — keep these
+exclude = ["**/legacy"]                # added on top of pyright's defaults (node_modules, __pycache__, .*)
 typeCheckingMode = "standard"          # "strict" for new projects
 pythonVersion = "3.10"
 ```
@@ -222,17 +222,22 @@ Done means all of these hold:
    its own strict mode is enabled.
 8. **ty/Pyrefly maturity.** No plugin system (Django/SQLAlchemy/Pydantic
    plugin stacks can't migrate), beta-grade churn, and migrating off pyright
-   can *lose* diagnostics it used to catch. ty's "gradual guarantee" (adding
-   annotations never introduces new errors elsewhere) makes it a pleasant
-   incremental pilot — as an editor/local tool, not yet an OSS package's CI
+   can *lose* diagnostics it used to catch. ty's "gradual guarantee" (removing
+   or loosening an annotation never introduces new errors — adding precision
+   may surface real ones) makes it a pleasant incremental pilot — as an editor/local tool, not yet an OSS package's CI
    gate.
-9. **pyright `include`/`exclude` replace the defaults.** Forget to re-add
-   `.venv` and `__pycache__` and scans become slow and noisy.
+9. **pyright `exclude` is additive.** Custom entries are added on top of the
+   defaults (`**/node_modules`, `**/__pycache__`, `**/.*`), and the defaults take
+   precedence — so you cannot un-exclude a dot-directory by listing it in
+   `include`; move the code instead.
 10. **Ruff is not a type checker.** Its ANN rules police annotation *style*;
     they catch zero type errors. A passing lint run says nothing here.
-11. **Checker upgrades flip defaults.** Major releases have turned previously
-    opt-in strictness flags on by default, newly breaking CI — the reason
-    step 3 pins exact versions and upgrades deliberately.
+11. **Checker upgrades flip defaults.** mypy 2.0 (2026-05) turned
+    `--local-partial-types` and `--strict-bytes` on by default, changed
+    `--allow-redefinition` semantics, dropped `--python-version 3.9`, and
+    added experimental parallel checking (`--num-workers N`) — a routine bump
+    can newly break CI, which is why step 3 pins exact versions and upgrades
+    deliberately.
 
 ## Bundled resources
 

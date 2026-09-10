@@ -30,7 +30,7 @@ including version-pinned installs from releases:
 
 ```bash
 gh skill install Paldom/python-skills
-gh skill install Paldom/python-skills <skill> --pin v0.2.0
+gh skill install Paldom/python-skills <skill> --pin v0.4.0
 ```
 
 Or as a Claude Code plugin:

@@ -90,7 +90,9 @@ Key decisions, with detail in [references/dependabot.md](references/dependabot.m
 - **Cooldown is the supply-chain control**, not the schedule: it delays adoption of
   freshly published versions past the window in which malicious releases are usually
   caught, and it is auto-bypassed for security-advisory updates — the reason to
-  prefer it over a package-manager-level freshness pin alone.
+  prefer it over a package-manager-level freshness pin alone. Since 2026-07-14
+  github.com applies a 3-day default with no config; `default-days: 7` is how you
+  lengthen it deliberately (and keep it aligned with `exclude-newer`, step 5).
 - **Grouping minor+patch** is the accepted fix for PR-noise complaints. Keep majors
   ungrouped so breaking changes get individual review.
 - **Never blanket auto-merge bot PRs.** In the April 2026 malicious-`axios` incident
@@ -99,8 +101,9 @@ Key decisions, with detail in [references/dependabot.md](references/dependabot.m
 - **Renovate** is the alternative when the user needs config-as-code flexibility;
   its cooldown equivalent is `minimumReleaseAge`. Trade-offs and its `pinDigest`
   footgun are in the reference. Pick one bot — running both doubles the noise.
-- Dependabot's pip/uv cooldown paths are younger than its npm/actions ones; after
-  enabling, confirm update PRs actually arrive on the next scheduled run.
+- Cooldown (`default-days`, and `semver-*-days` for pip/uv) is supported for the
+  pip, uv, pre-commit and github-actions ecosystems; after enabling, confirm update
+  PRs actually arrive on the next scheduled run.
 
 ### 4. Vulnerability audit of the lockfile (pip-audit)
 
@@ -108,13 +111,13 @@ Audit the *project's* pinned set, exported from the lockfile:
 
 ```bash
 uv export --format requirements-txt --no-emit-project -o /tmp/audit-req.txt
-uvx --from pip-audit==2.7.3 pip-audit -r /tmp/audit-req.txt --no-deps
+uvx --from pip-audit==2.10.1 pip-audit -r /tmp/audit-req.txt --no-deps
 ```
 
-(`==2.7.3` is an example pin — check PyPI for the current release and pin that.
+(`==2.10.1` is an example pin — check PyPI for the current release and pin that.
 Unpinned `uvx` executes whatever was published minutes ago: the exact attack this
 skill exists to prevent.) Plain-pip fallback, run inside the project environment:
-`python -m pip install pip-audit==2.7.3 && pip-audit`.
+`python -m pip install pip-audit==2.10.1 && pip-audit`.
 
 - Do NOT run bare `uvx pip-audit` with no `-r`: it audits pip-audit's own ephemeral
   environment, not your project, and reports a clean bill for the wrong thing.
@@ -122,7 +125,9 @@ skill exists to prevent.) Plain-pip fallback, run inside the project environment
 - Report findings with the fix version per package; do not blind-upgrade everything,
   and avoid `pip-audit --fix` in automation (it mutates the environment, not the
   lockfile).
-- Alternative: `osv-scanner` (Go binary) reads `uv.lock` directly.
+- Alternatives: `osv-scanner` (Go binary) reads `uv.lock` directly; `uv audit`
+  (preview since June 2026, OSV-backed, lockfile-aware) is the zero-install option
+  once it stabilizes — pin the uv version you verified it with.
 - Recurrence: Dependabot security updates cover the alerting side; add a scheduled
   scan workflow only if the user wants audit output in CI (workflow shape in
   [references/scanning-and-provenance.md](references/scanning-and-provenance.md)).
@@ -136,8 +141,10 @@ For uv projects, add a resolver-level buffer against just-published packages:
 exclude-newer = "2026-06-27T00:00:00Z"   # resolver ignores anything published after this
 ```
 
-Recent uv releases also accept a relative window such as `exclude-newer = "7 days"`;
-run `uv lock` after setting it — an unsupported form fails there, not silently.
+uv also accepts a relative window — `exclude-newer = "7 days"` (or ISO 8601
+`P7D`) — and `exclude-newer-package` scopes the cutoff per package; run `uv lock`
+after setting it. The cutoff compares each *artifact's* upload time, not the
+release date, so a wheel uploaded late is filtered on its own.
 Two gotchas: a fixed timestamp freezes resolution in the past until someone bumps it
 (add it to the release checklist), and unlike Dependabot's cooldown it delays
 security fixes too — which is why you run *both*: `exclude-newer` guards `uv lock`
@@ -216,7 +223,7 @@ gh api "repos/{owner}/{repo}/dependency-graph/sbom" --jq .sbom > sbom.spdx.json
 
 # Build-time CycloneDX from the lockfile (ship next to the wheel):
 uv export --format requirements-txt --no-emit-project -o /tmp/sbom-req.txt
-uvx --from cyclonedx-bom==4.4.3 cyclonedx-py requirements /tmp/sbom-req.txt -o sbom.cdx.json
+uvx --from cyclonedx-bom==7.3.1 cyclonedx-py requirements /tmp/sbom-req.txt -o sbom.cdx.json
 ```
 
 For releases, attest the built artifacts with `actions/attest-build-provenance`

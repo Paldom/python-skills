@@ -34,9 +34,8 @@ distributed via the plugin manifest in `.claude-plugin/`.
   (slash-invoked, needs the owner's go-ahead) — never flip repo visibility ad hoc.
   Deployment model: docs/deploying.md.
 - **Never run `git commit` or `git push`.** Leave every change in the working
-  tree for the owner to review and commit. (The bash-guard hook additionally
-  blocks `--no-verify` and force-pushes as a safety net; the server-side `main`
-  ruleset is the real gate.)
+  tree for the owner to review and commit. (The bash-guard hook enforces this
+  for the agent's Bash tool; the server-side `main` ruleset is the real gate.)
 - `.local/` is gitignored personal material (only its README is committed) — read
   ALL of it recursively, never commit its contents, never cite it as a committed
   path.
@@ -46,7 +45,8 @@ distributed via the plugin manifest in `.claude-plugin/`.
 - Authoring rules: `docs/skill-authoring.md` · Eval methodology: `docs/evals.md`
 - Session goal prompt: `.local/PROMPT.md` — personal, created at scaffold time,
   never committed; if it is missing, ask the maintainer for their goal prompt.
-- Hooks: `.claude/hooks/` (SKILL.md write-time validation, bash guard) — wired in
+- Hooks: `.claude/hooks/` (SKILL.md write-time validation, ruff on written
+  Python, owner-only git guard, a Stop gate that runs `make check`) — wired in
   `.claude/settings.json`; changes to them get PR-level scrutiny.
 - The `add-skill` skill (`.claude/skills/add-skill/`) walks the authoring
   workflow — prefer it over ad-hoc skill writing. The `publish-repo` skill

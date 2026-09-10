@@ -38,7 +38,7 @@
       "expected_behavior": [
         "checks the trusted publisher fields on PyPI character-by-character against the repo (owner and repo casing, workflow filename including the .yml extension, environment name)",
         "checks whether the publish step runs via workflow_call or a reusable workflow, which breaks the exact-match validation",
-        "checks that the job runs on a GitHub-hosted runner, since self-hosted runners are not supported for trusted publishing",
+        "puts the publish job on a GitHub-hosted runner (self-hosted is untested/unsupported by the PyPA action) and keeps it separate from the build job",
         "does not suggest falling back to a long-lived API token as the fix"
       ]
     },

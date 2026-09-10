@@ -27,8 +27,10 @@ Nothing is stored, nothing rotates, nothing can leak from repo secrets. Docs:
 ## Setup (exact-match fields)
 
 - **Never-published project:** <https://pypi.org/manage/account/publishing/> →
-  "Add a new pending publisher" (reserves the name; converts to a real project
-  on first publish — check the name is free on PyPI first).
+  "Add a new pending publisher" — it does **not** reserve the name (anyone can
+  still claim it before your first upload, which invalidates the pending entry);
+  it converts to a real project on first publish, so check the name is free
+  first and publish soon after.
 - **Existing project:** project page → Settings → Publishing.
 
 Four fields, validated by **exact, case-sensitive match** against the OIDC
@@ -56,14 +58,15 @@ even though the package exists. Work through, in order:
 
 1. **Diff every field character-by-character** against the repo: owner casing,
    repo casing, workflow filename including extension, environment name.
-2. **Indirection breaks the match.** If publishing happens inside a reusable
-   workflow (`workflow_call`), PyPI validates the *calling* workflow's
-   filename. Keep the publish step in the directly-triggered file, or register
-   the caller's filename.
+2. **Indirection breaks the match.** Reusable (`workflow_call`) workflows
+   cannot be the trusted-publisher workflow at all
+   (https://docs.pypi.org/trusted-publishers/troubleshooting/) — keep the
+   publish step in the directly-triggered file.
 3. **`environment:` mismatch.** Publisher registered with environment `pypi`
    but the job has no `environment:` key (or a different name) — or vice versa.
-4. **Runner type.** Self-hosted runners are not supported; the job must run on
-   GitHub-hosted runners.
+4. **Runner type.** Self-hosted runners are untested and unsupported by the
+   PyPA action (OIDC is issued by GitHub, so they are *expected* to work) — when
+   in doubt, publish from a GitHub-hosted job and build wherever you like.
 5. **Missing `id-token: write`.** Note that setting any job-level
    `permissions:` block removes all unlisted permissions — make sure the
    publish job has `id-token: write` itself.
@@ -72,23 +75,24 @@ even though the package exists. Work through, in order:
 
 Do **not** "fix" this by falling back to a long-lived API token — the config
 mismatch is always findable, and the token reintroduces the exfiltration risk
-this setup removes (see community discussion:
-<https://github.com/orgs/community/discussions/176761>).
+this setup removes.
 
 ## PEP 740 attestations
 
 - `pypa/gh-action-pypi-publish` generates and uploads PEP 740 digital
   attestations automatically when using trusted publishing — no flags. They
   appear on the file detail pages on PyPI.
-- Attestations prove **which workflow run built the artifact** — provenance,
-  not safety. Real campaigns have produced validly-signed malicious packages
+- These are *publish* attestations: they prove which Trusted Publisher
+  identity (workflow, repo, environment) **uploaded** those exact bytes — not
+  how the bytes were built, and not safety. Build provenance needs a separate
+  attestation (`actions/attest-build-provenance`). Real campaigns have produced validly-signed malicious packages
   by compromising the pipeline itself ("the signature is real; the software is
   not"). Treat attestations as an audit trail, not a guarantee.
-- Attestations from private repositories are not supported.
+- Attestations are limited to Trusted Publishing flows against PyPI/TestPyPI (verify current scope at https://docs.pypi.org/attestations/).
 
 ## Known limitations
 
-- GitHub-hosted runners only (also true on npm); no self-hosted support.
+- Self-hosted runners: expected to work (GitHub issues the OIDC token) but unsupported by the PyPA action; npm's trusted publishing does refuse self-hosted runners.
 - No trusted-publishing path for non-GitHub/non-supported CI (Jenkins,
   CircleCI, Buildkite) — those setups still need token auth with manual
   rotation. (PyPI also supports GitLab, Google Cloud, and ActiveState as

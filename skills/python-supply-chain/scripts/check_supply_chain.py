@@ -241,9 +241,11 @@ def check_misc(root: Path) -> None:
         )
 
 
-def gh_json(args: list[str]) -> tuple[int, dict | list | None]:
+def gh_json(args: list[str], cwd: Path | None = None) -> tuple[int, dict | list | None]:
     try:
-        proc = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=30)
+        proc = subprocess.run(
+            ["gh", *args], capture_output=True, text=True, timeout=30, cwd=str(cwd) if cwd else None
+        )
     except (OSError, subprocess.TimeoutExpired) as exc:
         return 1, {"error": str(exc)}
     if proc.returncode != 0:
@@ -260,7 +262,9 @@ def check_github(root: Path) -> None:
             "ERROR github-checks: gh CLI not found on PATH (needed for --github)", file=sys.stderr
         )
         raise SystemExit(2)
-    rc, view = gh_json(["repo", "view", "--json", "nameWithOwner"])
+    rc, view = gh_json(
+        ["repo", "view", "--json", "nameWithOwner"], cwd=root
+    )  # the audited root, not the shell cwd
     if rc != 0 or not isinstance(view, dict) or "nameWithOwner" not in view:
         report(
             "WARN",

@@ -83,13 +83,13 @@ repos:
       - id: mypy
         name: mypy (pre-push)
         entry: uv run mypy .
-        language: system
+        language: unsupported   # `system` on pre-commit < 4.4
         pass_filenames: false
         stages: [pre-push]
       - id: pytest
         name: pytest (pre-push)
         entry: uv run pytest -q
-        language: system
+        language: unsupported   # `system` on pre-commit < 4.4
         pass_filenames: false
         stages: [pre-push]
 ```
@@ -145,7 +145,7 @@ update cadence — not free, state the trade-off.
 
 ```yaml
   - repo: https://github.com/hukkin/mdformat
-    rev: 0.7.22
+    rev: 1.0.0
     hooks:
       - id: mdformat
         additional_dependencies: [mdformat-gfm, mdformat-ruff]  # tables + Python code blocks via ruff
@@ -157,7 +157,7 @@ update cadence — not free, state the trade-off.
       - id: taplo-lint
 
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.35.1
+    rev: v1.38.0
     hooks:
       - id: yamllint
         args: [--strict]
@@ -255,7 +255,7 @@ If mirrors-mypy is chosen anyway:
 
 ```yaml
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.14.0
+    rev: v2.3.1
     hooks:
       - id: mypy
         files: ^(src|tests)/
@@ -276,7 +276,7 @@ Official hooks from [astral-sh/uv-pre-commit](https://github.com/astral-sh/uv-pr
 
 ```yaml
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.11.25
+    rev: 0.12.12
     hooks:
       - id: uv-lock        # keeps uv.lock in sync with pyproject.toml
       # - id: uv-export    # optional: syncs requirements.txt from uv.lock
@@ -289,7 +289,7 @@ commit fails until the lockfile matches.
 
 ```yaml
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.30.0
+    rev: v8.30.1
     hooks:
       - id: gitleaks
 ```
@@ -302,22 +302,23 @@ this hook alone as the fix for "stop keys getting committed".
 
 ## 9. Ruff extras — Markdown code blocks, excludes, ordering
 
-**Format Python code blocks inside Markdown** (ruff preview feature): needs
-BOTH of these — forgetting either silently skips `.md` files, and including
-Markdown without preview mode errors out:
+**Format Python code blocks inside Markdown** — on by default since Ruff 0.16
+(2026-07-23; fences tagged python/py/python3/py3/pyi/pycon), and the `ruff-format`
+hook already lists `markdown` in its `types_or`, so a current rev needs nothing
+extra (shown explicitly here for older revs):
 
 ```yaml
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.10
+    rev: v0.16.6
     hooks:
       - id: ruff-format
         types_or: [python, pyi, jupyter, markdown]   # markdown NOT in the default set
 ```
 
 ```toml
-# pyproject.toml
+# pyproject.toml — only if you want to OPT OUT for some files
 [tool.ruff]
-preview = true   # required for Markdown code-block formatting
+extend-exclude = ["CHANGELOG.md"]   # or `<!-- fmt: off -->` comments around a block
 ```
 
 If mdformat is in play, prefer `mdformat-ruff` instead of double-formatting.
@@ -341,7 +342,7 @@ enough.
 
 ## 10. Monorepos and local hooks
 
-- `repo: local` + `language: system` hooks run whatever is on PATH — zero hook
+- `repo: local` + `language: unsupported` (alias of `system`, pre-commit >= 4.4) hooks run whatever is on PATH — zero hook
   environments, but every machine and CI runner must provide the tool (use
   `uv run …` entries so the project env provides it).
 - uv-workspace monorepos: replace per-package hook stanzas with a few

@@ -152,7 +152,15 @@ def check_tags(repo: Path, version: str | None, dynamic: bool) -> None:
         add("OK", "git-tags", str(repo), f"latest version tag {latest_tag}")
         return
     current = release_tuple(version)
-    if current == latest_tuple:
+    if current == latest_tuple and version.strip().lstrip("v") != latest_tag.strip().lstrip("v"):
+        add(
+            "WARN",
+            "tag-sync",
+            str(repo),
+            f"pyproject version {version} and latest tag {latest_tag} share a release number but "
+            "differ (prerelease/post/local segment) — the tag must equal the version exactly",
+        )
+    elif current == latest_tuple:
         add(
             "OK",
             "tag-sync",

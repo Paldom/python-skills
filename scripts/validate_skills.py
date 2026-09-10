@@ -50,6 +50,11 @@ KNOWN_KEYS = {
     "agent",
     "paths",
     "hooks",
+    "arguments",
+    "disallowed-tools",
+    "background",
+    "shell",
+    "compatibility",
     "license",
     "version",
     "author",
@@ -422,9 +427,9 @@ def check_skill_md(path: Path, distributed: bool) -> None:
 
     # --- body ---
     if len(body) > MAX_BODY_LINES:
-        warn(
+        err(
             path,
-            f"body is {len(body)} lines (> {MAX_BODY_LINES}) — Anthropic authoring guidance; move detail into references/ so it loads only when needed",
+            f"body is {len(body)} lines (> {MAX_BODY_LINES}, the hard ceiling in docs/skill-authoring.md) — move detail into references/ so it loads only when needed",
         )
     if not any(ln.strip() for ln in body):
         err(path, "skill body is empty")
@@ -783,6 +788,43 @@ def exact_case_child(directory: Path, filename: str) -> bool:
         return False
 
 
+RUFF_PIN_RE = re.compile(r"^ruff==(\S+)\s*$", re.M)
+RUFF_REQUIRED_RE = re.compile(r'^required-version\s*=\s*"([^"]+)"', re.M)
+RUFF_HOOK_REV_RE = re.compile(r"ruff-pre-commit\s*\n\s*rev:\s*v?(\S+)")
+
+
+def check_tool_pins(root: Path) -> None:
+    """The ruff version is written in three files; they must agree.
+
+    requirements-dev.txt is the source (CI installs it; the Makefile and the lint
+    hook read it). ruff.toml's `required-version` and the ruff-pre-commit `rev`
+    cannot read a file, so a Dependabot bump of one leaves the others behind —
+    `required-version` then makes every local run refuse, with a message about
+    versions rather than about the file that needs editing. Say it plainly here.
+    """
+    req = root / "requirements-dev.txt"
+    if not req.is_file():
+        return
+    m = RUFF_PIN_RE.search(req.read_text(encoding="utf-8", errors="replace"))
+    if not m:
+        return
+    pin = m.group(1)
+    for path, pattern, label in (
+        (root / "ruff.toml", RUFF_REQUIRED_RE, "required-version"),
+        (root / ".pre-commit-config.yaml", RUFF_HOOK_REV_RE, "ruff-pre-commit rev"),
+    ):
+        if not path.is_file():
+            continue
+        found = pattern.search(path.read_text(encoding="utf-8", errors="replace"))
+        if found and found.group(1) != pin:
+            err(
+                path,
+                f"{label} is {found.group(1)} but requirements-dev.txt pins ruff=={pin} — "
+                "the three must agree (CI installs requirements-dev.txt; required-version "
+                "makes a mismatch refuse to run)",
+            )
+
+
 def discover_and_check(root: Path) -> None:
     distributed_names: list[str] = []
     for base, distributed in ((root / "skills", True), (root / ".claude" / "skills", False)):
@@ -807,6 +849,7 @@ def discover_and_check(root: Path) -> None:
     check_manifest(root / ".claude-plugin" / "marketplace.json", ("name", "plugins"))
     check_skills_sh(root, distributed_names)
     check_readme(root, distributed_names)
+    check_tool_pins(root)
 
 
 def classify_distributed(f: Path, root: Path) -> bool:

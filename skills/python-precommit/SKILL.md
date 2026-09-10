@@ -90,7 +90,7 @@ repos:
 
   # Python lint + format. Order matters: fixer first, formatter second.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.10   # keep in lockstep with the ruff version in your dev deps
+    rev: v0.16.6    # keep in lockstep with the ruff version in your dev deps
     hooks:
       - id: ruff-check          # named `ruff` on older revs
         args: [--fix, --exit-non-zero-on-fix]
@@ -99,11 +99,12 @@ repos:
 
 Two load-bearing details:
 
-- `--exit-non-zero-on-fix`: without it, ruff silently fixes the file and the
-  hook **passes** — but the fix is left unstaged, so the commit ships the
-  *unfixed* content. With it, the hook fails, the developer stages the fix and
-  recommits. That fail → `git add` → recommit loop is expected pre-commit
-  behavior; tell the user so once.
+- pre-commit itself fails any hook that modified files ("files were modified by
+  this hook"), so an auto-fix never slips into a commit unstaged; the fail →
+  `git add` → recommit loop is expected behavior — tell the user so once.
+  `--exit-non-zero-on-fix` adds nothing under pre-commit; it matters when the
+  same `ruff check --fix` runs *outside* it (a Makefile or CI step), where a
+  fixed file otherwise exits 0 and reads as clean.
 - Excludes under pre-commit are special: pre-commit passes filenames
   explicitly, which can bypass exclusions from a `pyproject.toml` in an
   excluded subdirectory ([ruff#9585](https://github.com/astral-sh/ruff/issues/9585)).
@@ -132,20 +133,23 @@ Prettier route:
 
 ```yaml
   - repo: https://github.com/rbubley/mirrors-prettier   # maintained fork
-    rev: v3.8.2
+    rev: v3.9.6
     hooks:
       - id: prettier
         types_or: [yaml, markdown, json]   # never .py/.pyi — no fight with ruff
         args: [--prose-wrap=always]
+        # Ruff >= 0.16 formats Python code fences inside Markdown by default; Prettier
+        # leaves fence contents alone, so the two coexist — but do not add a second
+        # Python formatter for Markdown.
 
   - repo: https://github.com/abravalheri/validate-pyproject
-    rev: v0.25
+    rev: v0.26
     hooks:
       - id: validate-pyproject
         additional_dependencies: ["validate-pyproject-schema-store[all]"]
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.37.1
+    rev: 0.38.0
     hooks:
       - id: check-github-workflows
       - id: check-dependabot
@@ -162,7 +166,7 @@ automation, which the python-release skill owns):
 
 ```yaml
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v4.0.0
+    rev: v4.4.0
     hooks:
       - id: conventional-pre-commit
         stages: [commit-msg]
@@ -185,19 +189,20 @@ the mirrors-mypy isolated-env pitfall — see gotchas):
       - id: mypy
         name: mypy (pre-push)
         entry: uv run mypy .
-        language: system
+        language: unsupported
         pass_filenames: false
         stages: [pre-push]
       - id: pytest
         name: pytest (pre-push)
         entry: uv run pytest -q
-        language: system
+        language: unsupported
         pass_filenames: false
         stages: [pre-push]
 ```
 
-`language: system` means the tool must exist in each clone — fine here because
-`uv run` resolves the project's locked versions (pip fallback: `entry: python -m mypy .`).
+`language: unsupported` (the pre-commit >= 4.4 name; `system` on older versions)
+means the tool must exist in each clone — fine here because `uv run` resolves the
+project's locked versions (pip fallback: `entry: python -m mypy .`).
 Budget: pre-push under ~30 s; anything slower is CI-only.
 
 ### 6. Install and first run
@@ -234,10 +239,10 @@ jobs:
   pre-commit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4        # pin actions to full SHAs in real use
-      - uses: actions/setup-python@v5    # (re-tagged releases are a real attack)
+      - uses: actions/checkout@v7        # pin actions to full SHAs in real use
+      - uses: actions/setup-python@v7    # (re-tagged releases are a real attack)
         with: { python-version: "3.12" }
-      - run: python -m pip install pre-commit==4.3.0   # match your uv.lock version
+      - run: python -m pip install pre-commit==4.6.2   # match your uv.lock version
       - run: pre-commit run --all-files --show-diff-on-failure
 ```
 
@@ -345,7 +350,9 @@ that were configured but never installed. It never modifies anything.
 - **prek** ([github.com/j178/prek](https://github.com/j178/prek)) — Rust,
   uv-powered, drop-in reader of the same `.pre-commit-config.yaml`, faster
   installs/updates (community-reported) and native monorepo support; newer and
-  less battle-tested. Reasonable to offer when speed or monorepos hurt;
+  less battle-tested (0.5.x as of 2026-09). Renamed commands: `install-hooks` →
+  `prepare-hooks`, `autoupdate` → `update`, `SKIP` → `PREK_SKIP`; prek-only config
+  extensions can trip auditors that expect pure pre-commit YAML. Reasonable to offer when speed or monorepos hurt;
   `uv add --dev prek && uv run prek install`.
 - **"Pre-commit is dead under agents"** — a minority position (Massdriver
   talk, mid-2026) argues high-frequency agent edits make local hooks

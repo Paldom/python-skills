@@ -2,7 +2,7 @@
 """Read-only sanity checker for a repo's Ruff lint/format configuration.
 
 Detects the footguns that most often bite Ruff setups and migrations:
-leftover Black/Flake8/isort configs, the E-and-F-only default rule set,
+leftover Black/Flake8/isort configs, reliance on Ruff's (version-dependent) default rule set,
 E501 double-reporting, formatter-conflicting rules, select = ["ALL"],
 missing target-version, deprecated top-level lint keys, and
 per-file-ignores patterns that match no files.
@@ -34,18 +34,22 @@ except ModuleNotFoundError:  # Python < 3.11
 # Lint rules that fight `ruff format` (docs.astral.sh/ruff/formatter/#conflicting-lint-rules).
 # W191/E111/E114/E117 also conflict but are preview-only rules — a plain
 # select = ["E", "W"] does not enable them, so warning on them would be noise.
-FORMATTER_CONFLICTS = (
+FORMATTER_CONFLICTS = (  # https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules (2026-09)
     "COM812",
     "COM819",
-    "ISC001",
-    "ISC002",
     "Q000",
     "Q001",
     "Q002",
     "Q003",
+    "Q004",
+    "W191",
+    "E111",
+    "E114",
+    "E117",
+    "D203",
     "D206",
     "D300",
-)
+)  # ISC001 is fine with the formatter; ISC002 conflicts only without ISC001 + allow-multiline=false
 LEGACY_TOOLS = ("black", "flake8", "isort", "pyupgrade", "autoflake")
 # Lint settings that belong under [tool.ruff.lint], not top-level [tool.ruff]
 DEPRECATED_TOP_LEVEL = (
@@ -159,7 +163,7 @@ def check_ruff_tables(root: Path, ruff: dict) -> None:
     if not effective_select:
         warn(
             where,
-            "no [tool.ruff.lint] select — Ruff's default is only E+F, far less coverage than a typical Flake8+plugins stack",
+            "no [tool.ruff.lint] select — you are on Ruff's default rule set, which changed from E+F to 413 rules in 0.16 and moves on upgrades; write an explicit select",
         )
     if "ALL" in effective_select:
         warn(

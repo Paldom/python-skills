@@ -28,8 +28,19 @@ def main() -> int:
         file_path = os.path.join(project_dir, file_path)
 
     base = os.path.basename(file_path)
+    # Writes to a skill's evals or references change what the validator checks
+    # (eval shape, counts) — validate the owning SKILL.md for those too.
     if base.lower() != "skill.md":
-        return 0
+        parts = os.path.normpath(file_path).split(os.sep)
+        if "skills" not in parts or not (
+            (base == "evals.json" and "evals" in parts) or "references" in parts
+        ):
+            return 0
+        skill_dir = os.sep.join(parts[: len(parts) - 2])  # <skill>/evals/x or <skill>/references/x
+        candidate = os.path.join(skill_dir, "SKILL.md")
+        if not os.path.isfile(candidate):
+            return 0
+        file_path, base = candidate, "SKILL.md"
     if base != "SKILL.md":
         sys.stderr.write(
             f"Skill files must be named exactly SKILL.md — {base!r} will be invisible "
@@ -46,14 +57,18 @@ def main() -> int:
     # S603: argv is a fixed list — this interpreter, a path we just confirmed is a
     # file in this repo, and the edited file's path. No shell, so nothing in
     # file_path can be interpreted as a command.
-    proc = subprocess.run(
-        [sys.executable, validator, "--file", file_path, "--root", project_dir],
-        capture_output=True,
-        text=True,
-        timeout=30,
-        cwd=project_dir,
-        check=False,
-    )
+    try:
+        proc = subprocess.run(
+            [sys.executable, validator, "--file", file_path, "--root", project_dir],
+            capture_output=True,
+            text=True,
+            timeout=25,  # under the 45 s wired in settings.json, so a slow run still reports
+            cwd=project_dir,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        sys.stderr.write(f"validate_skill_file: validator did not run ({exc}) — NOT validated\n")
+        return 0  # tooling problem, not a skill problem
     if proc.returncode != 0:
         sys.stderr.write(
             "SKILL.md validation failed — fix these before continuing "

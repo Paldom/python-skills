@@ -90,10 +90,11 @@ set it to None in the ci profile rather than deleting tests), `derandomize`
 ### The example database
 
 Hypothesis records failing examples in `.hypothesis/` and retries them first
-on later runs — found bugs become permanent regression checks. If the
-directory is neither committed nor cached in CI, every run rediscovers known
-bugs from scratch. Either commit it or cache it; also promote important
-counterexamples to explicit `@example(...)` decorators so they are visible in
+on later runs — a cache that speeds up rediscovery, not a durable regression
+suite (entries can be dropped after test or version changes, and Hypothesis
+says not to rely on it for correctness). Cache it in CI (or commit it) for
+speed, and promote important counterexamples to explicit `@example(...)`
+decorators — that is the permanent record — so they are visible in
 the test file.
 
 ### Stateful testing
@@ -160,7 +161,7 @@ and a supply-chain exposure.
 
 ```toml
 [tool.mutmut]
-paths_to_mutate = "src/mypkg/parser.py"
+source_paths = ["src/mypkg/parser.py"]   # mutmut 3.x key; `do_not_mutate` skips generated code
 ```
 
 2. Triage survivors, one at a time:

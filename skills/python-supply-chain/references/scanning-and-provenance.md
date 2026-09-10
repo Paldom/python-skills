@@ -152,7 +152,7 @@ jobs:
       - uses: actions/checkout@<commit-sha>          # vX.Y.Z
       - uses: astral-sh/setup-uv@<commit-sha>        # vX.Y.Z
       - run: uv export --format requirements-txt --no-emit-project -o audit-req.txt
-      - run: uvx --from pip-audit==2.7.3 pip-audit -r audit-req.txt --no-deps
+      - run: uvx --from pip-audit==2.10.1 pip-audit -r audit-req.txt --no-deps
         # ==2.7.3 is an example pin — substitute the current PyPI release
 ```
 
@@ -204,7 +204,7 @@ norm, not an emergency.
 
 ```bash
 uv export --format requirements-txt --no-emit-project -o /tmp/sbom-req.txt
-uvx --from cyclonedx-bom==4.4.3 cyclonedx-py requirements /tmp/sbom-req.txt -o sbom.cdx.json
+uvx --from cyclonedx-bom==7.3.1 cyclonedx-py requirements /tmp/sbom-req.txt -o sbom.cdx.json
 # ==4.4.3 is an example pin — substitute the current PyPI release
 ```
 

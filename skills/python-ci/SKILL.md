@@ -81,11 +81,11 @@ concurrency:
 - **Environment**: `astral-sh/setup-uv` with `enable-cache: true` and a
   `python-version: ${{ matrix.python-version }}` input — no separate
   `actions/setup-python` needed. Install with `uv sync --locked --group dev`, run
-  tools with `uv run <tool>`. (No uv? `actions/setup-python@v5` with `cache: pip`
-  plus `pip install -e .[dev]` and direct tool commands is the fallback; state it
+  tools with `uv run <tool>`. (No uv? `actions/setup-python@v7` with `cache: pip`
+  plus `pip install -e . --group dev` (pip >= 25.1 reads PEP 735 groups) and direct tool commands is the fallback; state it
   once and move on.)
-- **Matrix**: every version in `requires-python`, quoted — `['3.10', '3.11',
-  '3.12', '3.13']`. Unquoted `3.10` is YAML for the float `3.1`. Decision rule for
+- **Matrix**: every version in `requires-python`, quoted — `['3.11', '3.12',
+  '3.13', '3.14']` (3.10 reaches EOL 2026-10; 3.15 ships 2026-10-01). Unquoted `3.10` is YAML for the float `3.1`. Decision rule for
   `fail-fast`: `false` when you want full cross-version signal (default here),
   `true` only for quick PR loops where first-failure is enough. OS axis only if the
   package does platform-dependent work; each axis multiplies billed minutes
@@ -98,9 +98,11 @@ concurrency:
 If the repo measures coverage, per-leg gating is wrong: a leg that skips
 version-specific code fails even when combined coverage is fine.
 
-- Each matrix leg uploads its data file as an artifact: unique name including the
-  matrix values (`coverage-${{ matrix.python-version }}`), and
-  `include-hidden-files: true` because `.coverage.*` files are hidden.
+- Each matrix leg runs `pytest --cov --cov-fail-under=0` with
+  `COVERAGE_FILE=.coverage.py${{ matrix.python-version }}` (pytest-cov writes one
+  `.coverage` per leg and applies the config's `fail_under` per leg unless told
+  not to), then uploads it as an artifact: unique name including the matrix
+  values, and `include-hidden-files: true` because `.coverage.*` files are hidden.
 - A `coverage` job (`needs: test`) downloads all legs, runs `uv run coverage
   combine` and `uv run coverage report`. The threshold *value* and
   `relative_files = true` (required for cross-runner combining) live in the repo's
@@ -122,17 +124,17 @@ stable job:
     steps:
       - name: Fail if any needed job did not succeed
         run: |
-          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
-            echo "::error::A required job failed or was cancelled."
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}" == "true" ]]; then
+            echo "::error::A required job failed, was cancelled, or was skipped."
             exit 1
           fi
           echo "All checks passed."
 ```
 
-- If no job in `needs:` is ever intentionally skipped, also fail on
-  `contains(needs.*.result, 'skipped')` — a misconfigured `if:` then surfaces
-  instead of silently passing. If some jobs are path-filtered, keep skipped
-  allowed and document why (see the reference for the path-filter variant).
+- `skipped` is in the test on purpose: a misconfigured `if:` on a dependency
+  then surfaces instead of silently passing. Only if some jobs are
+  intentionally path-filtered do you drop it — and document why (the reference
+  has the path-filter variant).
 - Keep the job name stable; renaming it means updating branch settings in the
   same PR or nothing merges.
 
@@ -146,11 +148,14 @@ mode, fine-grained bypass actors); classic branch protection is fine for a singl
 simple repo. Configure via API to avoid drift — classic:
 
 ```bash
-gh api repos/{owner}/{repo}/branches/main/protection --method PUT \
-  --field required_status_checks='{"strict":true,"contexts":["all-checks-passed"]}' \
-  -F enforce_admins=true \
-  --field required_pull_request_reviews='{"required_approving_review_count":1,"dismiss_stale_reviews":true}' \
-  -F restrictions=null
+# --field/-F send strings (and coerce bools/ints), never nested objects — give the
+# API a JSON body instead.
+gh api repos/{owner}/{repo}/branches/main/protection --method PUT --input - <<'JSON'
+{ "required_status_checks": { "strict": true, "contexts": ["all-checks-passed"] },
+  "enforce_admins": true,
+  "required_pull_request_reviews": { "required_approving_review_count": 1, "dismiss_stale_reviews": true },
+  "restrictions": null }
+JSON
 ```
 
 - Mark **only** `all-checks-passed` as required. Individual matrix legs as
@@ -176,11 +181,13 @@ Details, rationale, and incident history: [references/workflow-hardening.md](ref
   compromise shipped malicious code to every `@v` consumer). Resolve tags:
 
   ```bash
-  git ls-remote https://github.com/astral-sh/setup-uv refs/tags/v5\*
+  git ls-remote https://github.com/astral-sh/setup-uv refs/tags/v10\*
   # the `^{}` line is the commit SHA for annotated tags — pin that one
   ```
 
-  Format: `uses: owner/action@<40-hex-sha>  # v5.4.1` — keep the version comment;
+  Format: `uses: owner/action@<40-hex-sha>  # v10.0.1` — keep the version comment;
+  note `astral-sh/setup-uv` deleted its floating major/minor tags at 8.0.0, so
+  `@v10` does not resolve at all — only full versions or SHAs do;
   update tooling and humans both key off it.
 - **Minimal `GITHUB_TOKEN`**: workflow-level `permissions: contents: read`,
   job-level additions only where needed. Never rely on the repo-wide default.
@@ -188,7 +195,7 @@ Details, rationale, and incident history: [references/workflow-hardening.md](ref
   triggers, excessive permissions), pinned:
 
   ```bash
-  uvx zizmor==1.9.0 .github/workflows/
+  uvx zizmor==1.30.1 .github/workflows/
   ```
 
   Check https://github.com/zizmorcore/zizmor for the current release and bump the
@@ -206,7 +213,7 @@ Details, rationale, and incident history: [references/workflow-hardening.md](ref
 
 ```bash
 python3 "${CLAUDE_SKILL_DIR}/scripts/check_workflows.py" --repo .        # unpinned actions, float versions, missing if: always(), ...
-uvx zizmor==1.9.0 .github/workflows/               # security findings
+uvx zizmor==1.30.1 .github/workflows/               # security findings
 git switch -c ci-setup && git push -u origin ci-setup
 gh pr create --fill && gh pr checks --watch        # every job green, aggregator reports
 ```
@@ -242,7 +249,7 @@ rules, and — if a merge queue is on — that a queued PR actually merges.
 | CI passes after an agent's PR, gate is weaker | Review workflow diffs for `\|\| true`, deleted steps, loosened triggers, edited thresholds. Server-side required checks + admin enforcement are the only layer a local agent cannot self-modify around; CODEOWNERS on `.github/` (supply-chain skill) adds review. |
 | Workflow didn't trigger after a bot push/tag | Events created with the default `GITHUB_TOKEN` do not start new workflow runs — chaining needs a GitHub App token or PAT (python-release territory). |
 | Format check fails right after a Ruff release | Tool versions must come from the lockfile (`uv sync --locked`), so CI and local runs use identical versions — never `pip install ruff` unpinned in a workflow step. |
-| Cache poisoning via fork PRs | `pull_request_target` + cache write is an escalation path. GitHub has been tightening cache/token semantics for low-trust events (rolling changes — verify current behavior in GitHub's changelog); design as if fork-writable caches are hostile. |
+| Cache poisoning via fork PRs | `pull_request_target` + cache write is an escalation path. Since 2026-06-26 untrusted triggers (`pull_request_target`, `issue_comment`, fork `workflow_run`) get a read-only cache token for default-branch scopes — treat that as the floor and still design as if fork-writable caches are hostile. |
 
 ## Bundled resources
 

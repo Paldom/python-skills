@@ -37,7 +37,7 @@ at each project milestone rather than hard-coding a choice into team dogma.
   `[tool.basedpyright]`.
 - **ty** ([github.com/astral-sh/ty](https://github.com/astral-sh/ty)) — from
   Astral (Ruff, uv), Rust, formerly Red Knot, in beta. Built around a formal
-  "gradual guarantee": adding annotations to working code is designed never to
+  "gradual guarantee": loosening or removing annotations in working code is designed never to
   introduce new errors elsewhere — a structural answer to the cascading-error
   pain ratchet strategies exist to manage. No plugin system. Config in
   `[tool.ty]` or `ty.toml`.
@@ -58,11 +58,11 @@ at each project milestone rather than hard-coding a choice into team dogma.
 
 | Checker | Maintainer | Maturity | Plugins | Default posture | Config |
 | --- | --- | --- | --- | --- | --- |
-| mypy | Python community | Reference impl., most mature | Django, SQLAlchemy, Pydantic | Permissive — skips unannotated defs | `[tool.mypy]` / `mypy.ini` |
+| mypy | Python community | Reference impl., most mature (2.x since 2026-05; 2.0 flipped `local-partial-types`/`strict-bytes` on) | Django, SQLAlchemy, Pydantic | Permissive — skips unannotated defs | `[tool.mypy]` / `mypy.ini` |
 | pyright | Microsoft | Mature, editor-dominant | None | Checks everything, strong inference | `[tool.pyright]` / `pyrightconfig.json` |
 | basedpyright | Community fork | Actively maintained | None | Stricter than pyright | `[tool.basedpyright]` |
-| ty | Astral | Beta | None | Gradual guarantee, lenient on untyped | `[tool.ty]` / `ty.toml` |
-| Pyrefly | Meta | Young (recently 1.0 per some sources) | None | Aggressive inference + bulk suppress | `[tool.pyrefly]` / `pyrefly.toml` |
+| ty | Astral | Beta (0.0.x releases, pre-1.0 as of 2026-09) | None | Gradual guarantee, lenient on untyped | `[tool.ty]` / `ty.toml` |
+| Pyrefly | Meta | Stable 1.x (1.2.0, 2026-08) | None | Aggressive inference + bulk suppress | `[tool.pyrefly]` / `pyrefly.toml` |
 | zuban | Solo maintainer | Young | None (reads mypy config) | mypy-compatible mode | mypy config files |
 
 ## Decision guide

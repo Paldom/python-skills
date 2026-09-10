@@ -22,23 +22,38 @@ import shutil
 import subprocess
 import sys
 
-# Keep in lockstep with requirements-dev.txt and .pre-commit-config.yaml.
-RUFF_PIN = "0.15.10"
 TIMEOUT = 30
 # ruff.toml's `required-version` makes a mismatched ruff abort. That says nothing
 # about the file being edited, so it must never be reported as a lint failure.
 VERSION_MISMATCH = "Required version"
 
 
-def ruff_argv() -> list[str] | None:
+def ruff_pin(project_dir: str) -> str | None:
+    """The ruff version CI installs — read from requirements-dev.txt, the one source.
+
+    (.pre-commit-config.yaml and ruff.toml's `required-version` carry the same
+    number; `required-version` is what makes any drift between them fail loudly.)
+    """
+    try:
+        with open(os.path.join(project_dir, "requirements-dev.txt"), encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("ruff=="):
+                    return line.strip().split("==", 1)[1]
+    except OSError:
+        pass
+    return None
+
+
+def ruff_argv(project_dir: str) -> list[str] | None:
     """The command prefix that runs the *pinned* ruff here, or None if unavailable.
 
     uvx first: it always resolves the pin. A PATH ruff is only a fallback because
     ruff.toml sets `required-version`, so the wrong one aborts instead of
     disagreeing with CI — see VERSION_MISMATCH below.
     """
-    if shutil.which("uvx"):
-        return ["uvx", "--from", f"ruff=={RUFF_PIN}", "ruff"]
+    pin = ruff_pin(project_dir)
+    if pin and shutil.which("uvx"):
+        return ["uvx", "--from", f"ruff=={pin}", "ruff"]
     if shutil.which("ruff"):
         return ["ruff"]
     return None
@@ -59,7 +74,7 @@ def main() -> int:
     if not os.path.isfile(file_path):
         return 0
 
-    prefix = ruff_argv()
+    prefix = ruff_argv(project_dir)
     if prefix is None:
         return 0  # ruff unavailable: CI still enforces this
 
@@ -80,7 +95,7 @@ def main() -> int:
                 check=False,
             )
         except (OSError, subprocess.SubprocessError):
-            return 0  # tooling problem, not a code problem
+            break  # tooling problem, not a code problem — but keep what we already found
         output = (proc.stdout or proc.stderr).strip()
         if proc.returncode != 0:
             if VERSION_MISMATCH in output:

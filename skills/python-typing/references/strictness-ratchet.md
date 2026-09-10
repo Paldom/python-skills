@@ -15,8 +15,10 @@ mypy `strict = true` is a bundle of individual flags (per the
 `disallow_untyped_defs`, `disallow_incomplete_defs`, `disallow_untyped_calls`,
 `disallow_any_generics`, `disallow_untyped_decorators`, `check_untyped_defs`,
 `no_implicit_optional`, `warn_redundant_casts`, `warn_return_any`,
-`warn_unused_ignores`, `strict_equality`. Knowing the components matters
-because the ratchet turns them on one at a time.
+`warn_unused_ignores`, `strict_equality` — as of mypy 1.x; the bundle changes
+across releases (mypy 2.0 also flipped `local_partial_types` and `strict_bytes`
+on globally), so confirm the current list with `mypy --help`. Knowing the
+components matters because the ratchet turns them on one at a time.
 
 pyright has four `typeCheckingMode` levels — `off` / `basic` / `standard`
 (default) / `strict` — and its strict is generally tighter than mypy's.
@@ -80,7 +82,7 @@ directories, expanded as migration proceeds.
 ```toml
 [tool.pyright]
 include = ["src", "tests"]
-exclude = ["**/__pycache__", ".venv", "**/legacy"]  # exclude REPLACES defaults — re-add these
+exclude = ["**/legacy"]                              # added on top of pyright's defaults
 typeCheckingMode = "standard"                        # base level while migrating
 strict = ["src/myapp/core", "src/myapp/api"]         # strict islands, grow this list
 pythonVersion = "3.10"
@@ -119,7 +121,7 @@ reportMissingTypeStubs = "warning"                   # strict's noisiest rule, d
 
 Two newer checkers attack the same pain structurally instead of procedurally:
 
-- **ty's gradual guarantee** — adding annotations never introduces new errors
+- **ty's gradual guarantee** — loosening or removing annotations never introduces new errors (adding precision may reveal real ones)
   elsewhere, eliminating the "annotated one function, broke ten call sites"
   cascade. Makes file-by-file adoption genuinely safe, at beta-maturity cost.
 - **Pyrefly's `suppress`** — bulk-inserts suppression comments across legacy

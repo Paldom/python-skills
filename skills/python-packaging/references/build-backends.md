@@ -22,7 +22,7 @@ user's library repo; commands are copy-runnable there.
 | Version must derive from git tags at build time | `hatchling` + `hatch-vcs` (uv_build has no plugin API for this; `uv-dynamic-versioning` exists but is hatchling-based) |
 | C / Cython / Rust extension modules | `setuptools` (or `maturin`/`scikit-build-core` for Rust/CMake) — uv_build does not build extensions |
 | Deep legacy setuptools config already working | keep `setuptools`, migrate metadata to `[project]` only |
-| New project considering Poetry | prefer PEP 621 tooling; `poetry-core` keeps metadata in `[tool.poetry]`, off the standard |
+| New project considering Poetry | `poetry-core` reads PEP 621 `[project]` since Poetry 2.0, so metadata is no longer the objection — the reason to prefer uv_build/hatchling is one toolchain for env + lock + build, not a metadata format |
 
 `uv build` is a PEP 517 **frontend**: it invokes whatever `[build-system]`
 declares (hatchling, setuptools, flit-core, …). Choosing uv as project manager
@@ -32,7 +32,7 @@ and choosing the backend are independent decisions.
 
 ```toml
 [build-system]
-requires = ["uv_build>=0.11,<0.12"]
+requires = ["uv_build>=0.12,<0.13"]
 build-backend = "uv_build"
 ```
 
@@ -45,9 +45,11 @@ build-backend = "uv_build"
 - **Layout discovery**: expects `src/<module>/__init__.py` (preferred) or
   `./<module>/`, with `<module>` = the normalized project name
   (`my-package` → `my_package`).
-- **Hard constraint**: exactly one top-level module per wheel; data files must
-  live under the module root or a declared data directory. Multi-top-level
-  layouts fail metadata validation — that is a setuptools/hatchling job.
+- **Constraint**: modules must be declared — one by default (the normalized
+  project name), several via `module-name = ["a", "b"]`, or a namespace via
+  `namespace = true` (disables safety checks; prefer the explicit list). Data
+  files must live under the module root. Anything the discovery cannot express
+  is a setuptools/hatchling job.
 - **No extension modules** (C/Cython/Rust). Silently choosing uv_build for a
   project with extensions is a dead end.
 
@@ -87,12 +89,17 @@ packages = ["src/my_package"]
 - With `src/` layout, point the wheel target at the package as above; hatchling
   then ships everything inside that directory (including non-`.py` files such
   as `py.typed`) automatically.
-- Files *outside* the package directory need an include rule:
+- Files *outside* the package directory: `packages` is `only-include` under the
+  hood and **ignores `include` patterns**, so an `include = [...]` next to it
+  silently ships nothing. Either move the assets inside the package (then they
+  ride along automatically) or map them explicitly:
 
 ```toml
 [tool.hatch.build.targets.wheel]
 packages = ["src/my_package"]
-include = ["assets/templates/**"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"assets/templates" = "my_package/templates"   # source path -> path inside the wheel
 ```
 
 - Dynamic versioning from git tags is hatchling's headline feature via

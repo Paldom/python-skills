@@ -15,8 +15,8 @@ a clean environment goes to CI; only CI is un-bypassable.
 
 | Check | Agent hook | pre-commit | CI |
 | --- | --- | --- | --- |
-| Format (`ruff format`) | ✅ PostToolUse, single file, auto-fix | ✅ verify | `--check` only |
-| Lint (`ruff check`) | ✅ single file, `--fix` | ✅ staged files | ✅ full repo, no fixes |
+| Format (`ruff format`) | ✅ PostToolUse, single file, `--check` (report; auto-fix here trips the agent's stale-file check) | ✅ auto-fix | `--check` only |
+| Lint (`ruff check`) | ✅ single file, report | ✅ staged files, `--fix` | ✅ full repo, no fixes |
 | Secret scan | ✅ quick regex pass | ✅ canonical home | ✅ mandatory backstop (catches `--no-verify`) |
 | Type check | ⚠️ only if sub-second on one file | ⚠️ often too slow; mirrors-mypy env pitfalls | ✅ authoritative full run |
 | Tests | ⚠️ Stop hook, narrow fast subset | ⚠️ pre-push stage at most | ✅ full suite + coverage gate |
@@ -45,9 +45,9 @@ a clean environment goes to CI; only CI is un-bypassable.
 
 ## Duplication policy
 
-Never duplicate an expensive check across layers unless the earlier layer
-auto-fixes and the later one only verifies (`ruff format` at the hook,
-`ruff format --check` in CI). Running the identical blocking check three
+Never duplicate an expensive check across layers unless one layer fixes and the
+others only verify (`ruff format` at pre-commit, `ruff format --check` at the
+hook and in CI). Running the identical blocking check three
 times is the "running ruff three times" complaint — the layers exist to catch
 *different* failure classes, not to repeat each other. If CI has to fix
 something, the earlier layers didn't do their job; if a hook takes 30 seconds,

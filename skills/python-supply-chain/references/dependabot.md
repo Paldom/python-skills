@@ -64,11 +64,10 @@ gh api -X PUT "repos/{owner}/{repo}/automated-security-fixes"    # enable securi
   lockfile and `pyproject.toml` constraints together.
 - `package-ecosystem: "pip"` — `requirements*.txt`, pip-tools output, Pipenv, and
   Poetry projects (the `pip` value covers all of these).
-- Support for the uv ecosystem (including cooldown pass-through to the uv updater)
-  is newer and less battle-tested than npm/github-actions paths — the public bug
-  history below is mostly from other ecosystems. After enabling, verify on the next
-  scheduled run that PRs actually appear for a known-stale dependency before
-  trusting it.
+- The uv ecosystem supports `cooldown` (`default-days` and the `semver-*-days`
+  variants) like pip; the public bug history below is mostly from other
+  ecosystems. After enabling, verify on the next scheduled run that PRs actually
+  appear for a known-stale dependency before trusting it.
 
 ## Cooldown semantics
 
@@ -80,6 +79,12 @@ usually detected and yanked. Options per update entry:
 - `semver-major-days` / `semver-minor-days` / `semver-patch-days` — severity-aware
   delays (only meaningful for ecosystems where semver intent is knowable).
 - `include` / `exclude` — lists of dependency name patterns to scope the cooldown.
+
+Since 2026-07-14 github.com applies a **3-day default cooldown** to version updates
+even with no `cooldown:` block (security updates still open immediately; GHES adoption
+is version-dependent) — so an explicit `default-days` sets a longer or scoped window,
+it does not create the control from nothing
+(<https://github.blog/changelog/2026-07-14-dependabot-version-updates-introduce-default-package-cooldown/>).
 
 The property that makes Dependabot's cooldown the right layer for this control:
 **security-advisory-driven updates bypass the cooldown automatically.** A freshness

@@ -21,7 +21,7 @@ jobs:
       - name: Validate skills, evals, security rules, and plugin manifests
         run: python3 scripts/validate_skills.py
       - name: Score trigger evals (routing, collisions)
-        run: python3 scripts/run_evals.py
+        run: python3 scripts/run_evals.py --min-rank1 79
       - name: Self-check the scorer and the security rules
         run: |
           python3 scripts/test_run_evals.py
@@ -36,6 +36,10 @@ jobs:
           ruff format --check .
       - name: Validate GitHub workflow files
         run: check-jsonschema --builtin-schema vendor.github-workflows .github/workflows/*.yml
+      # The commit-stage hooks (whitespace, EOF, YAML/JSON/TOML, private keys): the
+      # same gate `git commit` runs, so `--no-verify` cannot slip a leak past CI.
+      - name: Commit-stage hygiene hooks (pre-commit)
+        run: pre-commit run --all-files --hook-stage pre-commit --show-diff-on-failure
 
   # Mirrors what skills.sh consumers run: discoverability + a real install.
   skills-sh:
